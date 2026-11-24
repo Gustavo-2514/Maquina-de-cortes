@@ -1,0 +1,108 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/archivo/wdth.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Máquina de Cortes — tokens.
+ * Base grafite neutra (não tinge a percepção de cor do vídeo) e um único acento:
+ * o amarelo das legendas de shorts. Coral só para destrutivo/erro.
+ */
+:root {
+  --radius: 0.5rem;
+  --app-font: 'Archivo Variable', ui-sans-serif, system-ui, sans-serif;
+
+  --background: #f4f4f2;
+  --foreground: #17181b;
+  --card: #ffffff;
+  --card-foreground: #17181b;
+  --primary: #f5c518;
+  --primary-foreground: #17140a;
+  --secondary: #e9e9e6;
+  --secondary-foreground: #17181b;
+  --muted: #e9e9e6;
+  --muted-foreground: #5d6068;
+  --accent: #e9e9e6;
+  --accent-foreground: #17181b;
+  --destructive: #d93d32;
+  --success: #1f9d63;
+  --warning: #c07a00;
+  --border: #dcdcd8;
+  --input: #d2d2cd;
+  --ring: #c99c00;
+}
+
+.dark {
+  --background: #131417;      /* bastidor */
+  --foreground: #ecebe6;      /* giz */
+  --card: #1b1d21;            /* mesa */
+  --card-foreground: #ecebe6;
+  --primary: #ffd23f;         /* amarelo-legenda */
+  --primary-foreground: #17140a;
+  --secondary: #26292e;
+  --secondary-foreground: #ecebe6;
+  --muted: #23262b;
+  --muted-foreground: #9a9da5;
+  --accent: #2a2d33;          /* trilho */
+  --accent-foreground: #ecebe6;
+  --destructive: #ff5a4e;     /* corte */
+  --success: #5bd49a;
+  --warning: #ffb547;
+  --border: #2a2d33;
+  --input: #33363d;
+  --ring: #ffd23f;
+}
+
+@theme inline {
+  --font-sans: var(--app-font);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body {
+    @apply bg-background text-foreground antialiased;
+    word-spacing: 0.08em; /* o espaço da Archivo é estreito em tamanhos de UI */
+  }
+  ::selection { background: color-mix(in oklab, var(--primary) 35%, transparent); }
+  :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+}
+
+/* títulos: Archivo larga e pesada — o tom “legenda de short” do produto */
+@utility font-display {
+  font-family: var(--app-font);
+  font-stretch: 118%;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+@keyframes caption-pop {
+  from { transform: scale(1.18); }
+  to { transform: scale(1); }
+}

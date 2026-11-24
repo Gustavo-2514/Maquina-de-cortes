@@ -1,0 +1,2192 @@
+{
+ "cases": [
+  {
+   "name": "wpl1-highlight",
+   "words": [
+    {
+     "w": "Olá",
+     "s": 0.0,
+     "e": 0.4
+    },
+    {
+     "w": "pessoal,",
+     "s": 0.5,
+     "e": 0.9
+    },
+    {
+     "w": "hoje",
+     "s": 1.0,
+     "e": 1.3
+    },
+    {
+     "w": "eu",
+     "s": 1.35,
+     "e": 1.5
+    },
+    {
+     "w": "vou",
+     "s": 1.55,
+     "e": 1.8
+    },
+    {
+     "w": "falar",
+     "s": 1.85,
+     "e": 2.2
+    },
+    {
+     "w": "sobre",
+     "s": 2.25,
+     "e": 2.5
+    },
+    {
+     "w": "dinheiro.",
+     "s": 2.55,
+     "e": 3.1
+    },
+    {
+     "w": "Presta",
+     "s": 4.0,
+     "e": 4.3
+    },
+    {
+     "w": "atenção",
+     "s": 4.35,
+     "e": 4.8
+    },
+    {
+     "w": "superextraordinariamente",
+     "s": 4.85,
+     "e": 5.9
+    }
+   ],
+   "words_per_line": 1,
+   "animation": "highlight",
+   "duration": 6.0,
+   "lines": [
+    [
+     "Olá"
+    ],
+    [
+     "pessoal,"
+    ],
+    [
+     "hoje"
+    ],
+    [
+     "eu"
+    ],
+    [
+     "vou"
+    ],
+    [
+     "falar"
+    ],
+    [
+     "sobre"
+    ],
+    [
+     "dinheiro."
+    ],
+    [
+     "Presta"
+    ],
+    [
+     "atenção"
+    ],
+    [
+     "superextraordinariamente"
+    ]
+   ],
+   "spans": [
+    {
+     "s": 0.0,
+     "e": 0.5,
+     "line": [
+      "Olá"
+     ],
+     "current": 0
+    },
+    {
+     "s": 0.5,
+     "e": 1.0,
+     "line": [
+      "pessoal,"
+     ],
+     "current": 0
+    },
+    {
+     "s": 1.0,
+     "e": 1.35,
+     "line": [
+      "hoje"
+     ],
+     "current": 0
+    },
+    {
+     "s": 1.35,
+     "e": 1.55,
+     "line": [
+      "eu"
+     ],
+     "current": 0
+    },
+    {
+     "s": 1.55,
+     "e": 1.85,
+     "line": [
+      "vou"
+     ],
+     "current": 0
+    },
+    {
+     "s": 1.85,
+     "e": 2.25,
+     "line": [
+      "falar"
+     ],
+     "current": 0
+    },
+    {
+     "s": 2.25,
+     "e": 2.55,
+     "line": [
+      "sobre"
+     ],
+     "current": 0
+    },
+    {
+     "s": 2.55,
+     "e": 3.35,
+     "line": [
+      "dinheiro."
+     ],
+     "current": 0
+    },
+    {
+     "s": 4.0,
+     "e": 4.35,
+     "line": [
+      "Presta"
+     ],
+     "current": 0
+    },
+    {
+     "s": 4.35,
+     "e": 4.85,
+     "line": [
+      "atenção"
+     ],
+     "current": 0
+    },
+    {
+     "s": 4.85,
+     "e": 6.0,
+     "line": [
+      "superextraordinariamente"
+     ],
+     "current": 0
+    }
+   ]
+  },
+  {
+   "name": "wpl1-none",
+   "words": [
+    {
+     "w": "Olá",
+     "s": 0.0,
+     "e": 0.4
+    },
+    {
+     "w": "pessoal,",
+     "s": 0.5,
+     "e": 0.9
+    },
+    {
+     "w": "hoje",
+     "s": 1.0,
+     "e": 1.3
+    },
+    {
+     "w": "eu",
+     "s": 1.35,
+     "e": 1.5
+    },
+    {
+     "w": "vou",
+     "s": 1.55,
+     "e": 1.8
+    },
+    {
+     "w": "falar",
+     "s": 1.85,
+     "e": 2.2
+    },
+    {
+     "w": "sobre",
+     "s": 2.25,
+     "e": 2.5
+    },
+    {
+     "w": "dinheiro.",
+     "s": 2.55,
+     "e": 3.1
+    },
+    {
+     "w": "Presta",
+     "s": 4.0,
+     "e": 4.3
+    },
+    {
+     "w": "atenção",
+     "s": 4.35,
+     "e": 4.8
+    },
+    {
+     "w": "superextraordinariamente",
+     "s": 4.85,
+     "e": 5.9
+    }
+   ],
+   "words_per_line": 1,
+   "animation": "none",
+   "duration": 6.0,
+   "lines": [
+    [
+     "Olá"
+    ],
+    [
+     "pessoal,"
+    ],
+    [
+     "hoje"
+    ],
+    [
+     "eu"
+    ],
+    [
+     "vou"
+    ],
+    [
+     "falar"
+    ],
+    [
+     "sobre"
+    ],
+    [
+     "dinheiro."
+    ],
+    [
+     "Presta"
+    ],
+    [
+     "atenção"
+    ],
+    [
+     "superextraordinariamente"
+    ]
+   ],
+   "spans": [
+    {
+     "s": 0.0,
+     "e": 0.5,
+     "line": [
+      "Olá"
+     ],
+     "current": null
+    },
+    {
+     "s": 0.5,
+     "e": 1.0,
+     "line": [
+      "pessoal,"
+     ],
+     "current": null
+    },
+    {
+     "s": 1.0,
+     "e": 1.35,
+     "line": [
+      "hoje"
+     ],
+     "current": null
+    },
+    {
+     "s": 1.35,
+     "e": 1.55,
+     "line": [
+      "eu"
+     ],
+     "current": null
+    },
+    {
+     "s": 1.55,
+     "e": 1.85,
+     "line": [
+      "vou"
+     ],
+     "current": null
+    },
+    {
+     "s": 1.85,
+     "e": 2.25,
+     "line": [
+      "falar"
+     ],
+     "current": null
+    },
+    {
+     "s": 2.25,
+     "e": 2.55,
+     "line": [
+      "sobre"
+     ],
+     "current": null
+    },
+    {
+     "s": 2.55,
+     "e": 3.35,
+     "line": [
+      "dinheiro."
+     ],
+     "current": null
+    },
+    {
+     "s": 4.0,
+     "e": 4.35,
+     "line": [
+      "Presta"
+     ],
+     "current": null
+    },
+    {
+     "s": 4.35,
+     "e": 4.85,
+     "line": [
+      "atenção"
+     ],
+     "current": null
+    },
+    {
+     "s": 4.85,
+     "e": 6.0,
+     "line": [
+      "superextraordinariamente"
+     ],
+     "current": null
+    }
+   ]
+  },
+  {
+   "name": "wpl1-karaoke",
+   "words": [
+    {
+     "w": "Olá",
+     "s": 0.0,
+     "e": 0.4
+    },
+    {
+     "w": "pessoal,",
+     "s": 0.5,
+     "e": 0.9
+    },
+    {
+     "w": "hoje",
+     "s": 1.0,
+     "e": 1.3
+    },
+    {
+     "w": "eu",
+     "s": 1.35,
+     "e": 1.5
+    },
+    {
+     "w": "vou",
+     "s": 1.55,
+     "e": 1.8
+    },
+    {
+     "w": "falar",
+     "s": 1.85,
+     "e": 2.2
+    },
+    {
+     "w": "sobre",
+     "s": 2.25,
+     "e": 2.5
+    },
+    {
+     "w": "dinheiro.",
+     "s": 2.55,
+     "e": 3.1
+    },
+    {
+     "w": "Presta",
+     "s": 4.0,
+     "e": 4.3
+    },
+    {
+     "w": "atenção",
+     "s": 4.35,
+     "e": 4.8
+    },
+    {
+     "w": "superextraordinariamente",
+     "s": 4.85,
+     "e": 5.9
+    }
+   ],
+   "words_per_line": 1,
+   "animation": "karaoke",
+   "duration": 6.0,
+   "lines": [
+    [
+     "Olá"
+    ],
+    [
+     "pessoal,"
+    ],
+    [
+     "hoje"
+    ],
+    [
+     "eu"
+    ],
+    [
+     "vou"
+    ],
+    [
+     "falar"
+    ],
+    [
+     "sobre"
+    ],
+    [
+     "dinheiro."
+    ],
+    [
+     "Presta"
+    ],
+    [
+     "atenção"
+    ],
+    [
+     "superextraordinariamente"
+    ]
+   ],
+   "spans": [
+    {
+     "s": 0.0,
+     "e": 0.5,
+     "line": [
+      "Olá"
+     ],
+     "current": 0
+    },
+    {
+     "s": 0.5,
+     "e": 1.0,
+     "line": [
+      "pessoal,"
+     ],
+     "current": 0
+    },
+    {
+     "s": 1.0,
+     "e": 1.35,
+     "line": [
+      "hoje"
+     ],
+     "current": 0
+    },
+    {
+     "s": 1.35,
+     "e": 1.55,
+     "line": [
+      "eu"
+     ],
+     "current": 0
+    },
+    {
+     "s": 1.55,
+     "e": 1.85,
+     "line": [
+      "vou"
+     ],
+     "current": 0
+    },
+    {
+     "s": 1.85,
+     "e": 2.25,
+     "line": [
+      "falar"
+     ],
+     "current": 0
+    },
+    {
+     "s": 2.25,
+     "e": 2.55,
+     "line": [
+      "sobre"
+     ],
+     "current": 0
+    },
+    {
+     "s": 2.55,
+     "e": 3.35,
+     "line": [
+      "dinheiro."
+     ],
+     "current": 0
+    },
+    {
+     "s": 4.0,
+     "e": 4.35,
+     "line": [
+      "Presta"
+     ],
+     "current": 0
+    },
+    {
+     "s": 4.35,
+     "e": 4.85,
+     "line": [
+      "atenção"
+     ],
+     "current": 0
+    },
+    {
+     "s": 4.85,
+     "e": 6.0,
+     "line": [
+      "superextraordinariamente"
+     ],
+     "current": 0
+    }
+   ]
+  },
+  {
+   "name": "wpl2-highlight",
+   "words": [
+    {
+     "w": "Olá",
+     "s": 0.0,
+     "e": 0.4
+    },
+    {
+     "w": "pessoal,",
+     "s": 0.5,
+     "e": 0.9
+    },
+    {
+     "w": "hoje",
+     "s": 1.0,
+     "e": 1.3
+    },
+    {
+     "w": "eu",
+     "s": 1.35,
+     "e": 1.5
+    },
+    {
+     "w": "vou",
+     "s": 1.55,
+     "e": 1.8
+    },
+    {
+     "w": "falar",
+     "s": 1.85,
+     "e": 2.2
+    },
+    {
+     "w": "sobre",
+     "s": 2.25,
+     "e": 2.5
+    },
+    {
+     "w": "dinheiro.",
+     "s": 2.55,
+     "e": 3.1
+    },
+    {
+     "w": "Presta",
+     "s": 4.0,
+     "e": 4.3
+    },
+    {
+     "w": "atenção",
+     "s": 4.35,
+     "e": 4.8
+    },
+    {
+     "w": "superextraordinariamente",
+     "s": 4.85,
+     "e": 5.9
+    }
+   ],
+   "words_per_line": 2,
+   "animation": "highlight",
+   "duration": 6.0,
+   "lines": [
+    [
+     "Olá",
+     "pessoal,"
+    ],
+    [
+     "hoje",
+     "eu"
+    ],
+    [
+     "vou",
+     "falar"
+    ],
+    [
+     "sobre",
+     "dinheiro."
+    ],
+    [
+     "Presta",
+     "atenção"
+    ],
+    [
+     "superextraordinariamente"
+    ]
+   ],
+   "spans": [
+    {
+     "s": 0.0,
+     "e": 0.5,
+     "line": [
+      "Olá",
+      "pessoal,"
+     ],
+     "current": 0
+    },
+    {
+     "s": 0.5,
+     "e": 1.0,
+     "line": [
+      "Olá",
+      "pessoal,"
+     ],
+     "current": 1
+    },
+    {
+     "s": 1.0,
+     "e": 1.35,
+     "line": [
+      "hoje",
+      "eu"
+     ],
+     "current": 0
+    },
+    {
+     "s": 1.35,
+     "e": 1.55,
+     "line": [
+      "hoje",
+      "eu"
+     ],
+     "current": 1
+    },
+    {
+     "s": 1.55,
+     "e": 1.85,
+     "line": [
+      "vou",
+      "falar"
+     ],
+     "current": 0
+    },
+    {
+     "s": 1.85,
+     "e": 2.25,
+     "line": [
+      "vou",
+      "falar"
+     ],
+     "current": 1
+    },
+    {
+     "s": 2.25,
+     "e": 2.55,
+     "line": [
+      "sobre",
+      "dinheiro."
+     ],
+     "current": 0
+    },
+    {
+     "s": 2.55,
+     "e": 3.35,
+     "line": [
+      "sobre",
+      "dinheiro."
+     ],
+     "current": 1
+    },
+    {
+     "s": 4.0,
+     "e": 4.35,
+     "line": [
+      "Presta",
+      "atenção"
+     ],
+     "current": 0
+    },
+    {
+     "s": 4.35,
+     "e": 4.85,
+     "line": [
+      "Presta",
+      "atenção"
+     ],
+     "current": 1
+    },
+    {
+     "s": 4.85,
+     "e": 6.0,
+     "line": [
+      "superextraordinariamente"
+     ],
+     "current": 0
+    }
+   ]
+  },
+  {
+   "name": "wpl2-none",
+   "words": [
+    {
+     "w": "Olá",
+     "s": 0.0,
+     "e": 0.4
+    },
+    {
+     "w": "pessoal,",
+     "s": 0.5,
+     "e": 0.9
+    },
+    {
+     "w": "hoje",
+     "s": 1.0,
+     "e": 1.3
+    },
+    {
+     "w": "eu",
+     "s": 1.35,
+     "e": 1.5
+    },
+    {
+     "w": "vou",
+     "s": 1.55,
+     "e": 1.8
+    },
+    {
+     "w": "falar",
+     "s": 1.85,
+     "e": 2.2
+    },
+    {
+     "w": "sobre",
+     "s": 2.25,
+     "e": 2.5
+    },
+    {
+     "w": "dinheiro.",
+     "s": 2.55,
+     "e": 3.1
+    },
+    {
+     "w": "Presta",
+     "s": 4.0,
+     "e": 4.3
+    },
+    {
+     "w": "atenção",
+     "s": 4.35,
+     "e": 4.8
+    },
+    {
+     "w": "superextraordinariamente",
+     "s": 4.85,
+     "e": 5.9
+    }
+   ],
+   "words_per_line": 2,
+   "animation": "none",
+   "duration": 6.0,
+   "lines": [
+    [
+     "Olá",
+     "pessoal,"
+    ],
+    [
+     "hoje",
+     "eu"
+    ],
+    [
+     "vou",
+     "falar"
+    ],
+    [
+     "sobre",
+     "dinheiro."
+    ],
+    [
+     "Presta",
+     "atenção"
+    ],
+    [
+     "superextraordinariamente"
+    ]
+   ],
+   "spans": [
+    {
+     "s": 0.0,
+     "e": 1.0,
+     "line": [
+      "Olá",
+      "pessoal,"
+     ],
+     "current": null
+    },
+    {
+     "s": 1.0,
+     "e": 1.55,
+     "line": [
+      "hoje",
+      "eu"
+     ],
+     "current": null
+    },
+    {
+     "s": 1.55,
+     "e": 2.25,
+     "line": [
+      "vou",
+      "falar"
+     ],
+     "current": null
+    },
+    {
+     "s": 2.25,
+     "e": 3.35,
+     "line": [
+      "sobre",
+      "dinheiro."
+     ],
+     "current": null
+    },
+    {
+     "s": 4.0,
+     "e": 4.85,
+     "line": [
+      "Presta",
+      "atenção"
+     ],
+     "current": null
+    },
+    {
+     "s": 4.85,
+     "e": 6.0,
+     "line": [
+      "superextraordinariamente"
+     ],
+     "current": null
+    }
+   ]
+  },
+  {
+   "name": "wpl2-karaoke",
+   "words": [
+    {
+     "w": "Olá",
+     "s": 0.0,
+     "e": 0.4
+    },
+    {
+     "w": "pessoal,",
+     "s": 0.5,
+     "e": 0.9
+    },
+    {
+     "w": "hoje",
+     "s": 1.0,
+     "e": 1.3
+    },
+    {
+     "w": "eu",
+     "s": 1.35,
+     "e": 1.5
+    },
+    {
+     "w": "vou",
+     "s": 1.55,
+     "e": 1.8
+    },
+    {
+     "w": "falar",
+     "s": 1.85,
+     "e": 2.2
+    },
+    {
+     "w": "sobre",
+     "s": 2.25,
+     "e": 2.5
+    },
+    {
+     "w": "dinheiro.",
+     "s": 2.55,
+     "e": 3.1
+    },
+    {
+     "w": "Presta",
+     "s": 4.0,
+     "e": 4.3
+    },
+    {
+     "w": "atenção",
+     "s": 4.35,
+     "e": 4.8
+    },
+    {
+     "w": "superextraordinariamente",
+     "s": 4.85,
+     "e": 5.9
+    }
+   ],
+   "words_per_line": 2,
+   "animation": "karaoke",
+   "duration": 6.0,
+   "lines": [
+    [
+     "Olá",
+     "pessoal,"
+    ],
+    [
+     "hoje",
+     "eu"
+    ],
+    [
+     "vou",
+     "falar"
+    ],
+    [
+     "sobre",
+     "dinheiro."
+    ],
+    [
+     "Presta",
+     "atenção"
+    ],
+    [
+     "superextraordinariamente"
+    ]
+   ],
+   "spans": [
+    {
+     "s": 0.0,
+     "e": 0.5,
+     "line": [
+      "Olá",
+      "pessoal,"
+     ],
+     "current": 0
+    },
+    {
+     "s": 0.5,
+     "e": 1.0,
+     "line": [
+      "Olá",
+      "pessoal,"
+     ],
+     "current": 1
+    },
+    {
+     "s": 1.0,
+     "e": 1.35,
+     "line": [
+      "hoje",
+      "eu"
+     ],
+     "current": 0
+    },
+    {
+     "s": 1.35,
+     "e": 1.55,
+     "line": [
+      "hoje",
+      "eu"
+     ],
+     "current": 1
+    },
+    {
+     "s": 1.55,
+     "e": 1.85,
+     "line": [
+      "vou",
+      "falar"
+     ],
+     "current": 0
+    },
+    {
+     "s": 1.85,
+     "e": 2.25,
+     "line": [
+      "vou",
+      "falar"
+     ],
+     "current": 1
+    },
+    {
+     "s": 2.25,
+     "e": 2.55,
+     "line": [
+      "sobre",
+      "dinheiro."
+     ],
+     "current": 0
+    },
+    {
+     "s": 2.55,
+     "e": 3.35,
+     "line": [
+      "sobre",
+      "dinheiro."
+     ],
+     "current": 1
+    },
+    {
+     "s": 4.0,
+     "e": 4.35,
+     "line": [
+      "Presta",
+      "atenção"
+     ],
+     "current": 0
+    },
+    {
+     "s": 4.35,
+     "e": 4.85,
+     "line": [
+      "Presta",
+      "atenção"
+     ],
+     "current": 1
+    },
+    {
+     "s": 4.85,
+     "e": 6.0,
+     "line": [
+      "superextraordinariamente"
+     ],
+     "current": 0
+    }
+   ]
+  },
+  {
+   "name": "wpl3-highlight",
+   "words": [
+    {
+     "w": "Olá",
+     "s": 0.0,
+     "e": 0.4
+    },
+    {
+     "w": "pessoal,",
+     "s": 0.5,
+     "e": 0.9
+    },
+    {
+     "w": "hoje",
+     "s": 1.0,
+     "e": 1.3
+    },
+    {
+     "w": "eu",
+     "s": 1.35,
+     "e": 1.5
+    },
+    {
+     "w": "vou",
+     "s": 1.55,
+     "e": 1.8
+    },
+    {
+     "w": "falar",
+     "s": 1.85,
+     "e": 2.2
+    },
+    {
+     "w": "sobre",
+     "s": 2.25,
+     "e": 2.5
+    },
+    {
+     "w": "dinheiro.",
+     "s": 2.55,
+     "e": 3.1
+    },
+    {
+     "w": "Presta",
+     "s": 4.0,
+     "e": 4.3
+    },
+    {
+     "w": "atenção",
+     "s": 4.35,
+     "e": 4.8
+    },
+    {
+     "w": "superextraordinariamente",
+     "s": 4.85,
+     "e": 5.9
+    }
+   ],
+   "words_per_line": 3,
+   "animation": "highlight",
+   "duration": 6.0,
+   "lines": [
+    [
+     "Olá",
+     "pessoal,"
+    ],
+    [
+     "hoje",
+     "eu",
+     "vou"
+    ],
+    [
+     "falar",
+     "sobre"
+    ],
+    [
+     "dinheiro."
+    ],
+    [
+     "Presta",
+     "atenção"
+    ],
+    [
+     "superextraordinariamente"
+    ]
+   ],
+   "spans": [
+    {
+     "s": 0.0,
+     "e": 0.5,
+     "line": [
+      "Olá",
+      "pessoal,"
+     ],
+     "current": 0
+    },
+    {
+     "s": 0.5,
+     "e": 1.0,
+     "line": [
+      "Olá",
+      "pessoal,"
+     ],
+     "current": 1
+    },
+    {
+     "s": 1.0,
+     "e": 1.35,
+     "line": [
+      "hoje",
+      "eu",
+      "vou"
+     ],
+     "current": 0
+    },
+    {
+     "s": 1.35,
+     "e": 1.55,
+     "line": [
+      "hoje",
+      "eu",
+      "vou"
+     ],
+     "current": 1
+    },
+    {
+     "s": 1.55,
+     "e": 1.85,
+     "line": [
+      "hoje",
+      "eu",
+      "vou"
+     ],
+     "current": 2
+    },
+    {
+     "s": 1.85,
+     "e": 2.25,
+     "line": [
+      "falar",
+      "sobre"
+     ],
+     "current": 0
+    },
+    {
+     "s": 2.25,
+     "e": 2.55,
+     "line": [
+      "falar",
+      "sobre"
+     ],
+     "current": 1
+    },
+    {
+     "s": 2.55,
+     "e": 3.35,
+     "line": [
+      "dinheiro."
+     ],
+     "current": 0
+    },
+    {
+     "s": 4.0,
+     "e": 4.35,
+     "line": [
+      "Presta",
+      "atenção"
+     ],
+     "current": 0
+    },
+    {
+     "s": 4.35,
+     "e": 4.85,
+     "line": [
+      "Presta",
+      "atenção"
+     ],
+     "current": 1
+    },
+    {
+     "s": 4.85,
+     "e": 6.0,
+     "line": [
+      "superextraordinariamente"
+     ],
+     "current": 0
+    }
+   ]
+  },
+  {
+   "name": "wpl3-none",
+   "words": [
+    {
+     "w": "Olá",
+     "s": 0.0,
+     "e": 0.4
+    },
+    {
+     "w": "pessoal,",
+     "s": 0.5,
+     "e": 0.9
+    },
+    {
+     "w": "hoje",
+     "s": 1.0,
+     "e": 1.3
+    },
+    {
+     "w": "eu",
+     "s": 1.35,
+     "e": 1.5
+    },
+    {
+     "w": "vou",
+     "s": 1.55,
+     "e": 1.8
+    },
+    {
+     "w": "falar",
+     "s": 1.85,
+     "e": 2.2
+    },
+    {
+     "w": "sobre",
+     "s": 2.25,
+     "e": 2.5
+    },
+    {
+     "w": "dinheiro.",
+     "s": 2.55,
+     "e": 3.1
+    },
+    {
+     "w": "Presta",
+     "s": 4.0,
+     "e": 4.3
+    },
+    {
+     "w": "atenção",
+     "s": 4.35,
+     "e": 4.8
+    },
+    {
+     "w": "superextraordinariamente",
+     "s": 4.85,
+     "e": 5.9
+    }
+   ],
+   "words_per_line": 3,
+   "animation": "none",
+   "duration": 6.0,
+   "lines": [
+    [
+     "Olá",
+     "pessoal,"
+    ],
+    [
+     "hoje",
+     "eu",
+     "vou"
+    ],
+    [
+     "falar",
+     "sobre"
+    ],
+    [
+     "dinheiro."
+    ],
+    [
+     "Presta",
+     "atenção"
+    ],
+    [
+     "superextraordinariamente"
+    ]
+   ],
+   "spans": [
+    {
+     "s": 0.0,
+     "e": 1.0,
+     "line": [
+      "Olá",
+      "pessoal,"
+     ],
+     "current": null
+    },
+    {
+     "s": 1.0,
+     "e": 1.85,
+     "line": [
+      "hoje",
+      "eu",
+      "vou"
+     ],
+     "current": null
+    },
+    {
+     "s": 1.85,
+     "e": 2.55,
+     "line": [
+      "falar",
+      "sobre"
+     ],
+     "current": null
+    },
+    {
+     "s": 2.55,
+     "e": 3.35,
+     "line": [
+      "dinheiro."
+     ],
+     "current": null
+    },
+    {
+     "s": 4.0,
+     "e": 4.85,
+     "line": [
+      "Presta",
+      "atenção"
+     ],
+     "current": null
+    },
+    {
+     "s": 4.85,
+     "e": 6.0,
+     "line": [
+      "superextraordinariamente"
+     ],
+     "current": null
+    }
+   ]
+  },
+  {
+   "name": "wpl3-karaoke",
+   "words": [
+    {
+     "w": "Olá",
+     "s": 0.0,
+     "e": 0.4
+    },
+    {
+     "w": "pessoal,",
+     "s": 0.5,
+     "e": 0.9
+    },
+    {
+     "w": "hoje",
+     "s": 1.0,
+     "e": 1.3
+    },
+    {
+     "w": "eu",
+     "s": 1.35,
+     "e": 1.5
+    },
+    {
+     "w": "vou",
+     "s": 1.55,
+     "e": 1.8
+    },
+    {
+     "w": "falar",
+     "s": 1.85,
+     "e": 2.2
+    },
+    {
+     "w": "sobre",
+     "s": 2.25,
+     "e": 2.5
+    },
+    {
+     "w": "dinheiro.",
+     "s": 2.55,
+     "e": 3.1
+    },
+    {
+     "w": "Presta",
+     "s": 4.0,
+     "e": 4.3
+    },
+    {
+     "w": "atenção",
+     "s": 4.35,
+     "e": 4.8
+    },
+    {
+     "w": "superextraordinariamente",
+     "s": 4.85,
+     "e": 5.9
+    }
+   ],
+   "words_per_line": 3,
+   "animation": "karaoke",
+   "duration": 6.0,
+   "lines": [
+    [
+     "Olá",
+     "pessoal,"
+    ],
+    [
+     "hoje",
+     "eu",
+     "vou"
+    ],
+    [
+     "falar",
+     "sobre"
+    ],
+    [
+     "dinheiro."
+    ],
+    [
+     "Presta",
+     "atenção"
+    ],
+    [
+     "superextraordinariamente"
+    ]
+   ],
+   "spans": [
+    {
+     "s": 0.0,
+     "e": 0.5,
+     "line": [
+      "Olá",
+      "pessoal,"
+     ],
+     "current": 0
+    },
+    {
+     "s": 0.5,
+     "e": 1.0,
+     "line": [
+      "Olá",
+      "pessoal,"
+     ],
+     "current": 1
+    },
+    {
+     "s": 1.0,
+     "e": 1.35,
+     "line": [
+      "hoje",
+      "eu",
+      "vou"
+     ],
+     "current": 0
+    },
+    {
+     "s": 1.35,
+     "e": 1.55,
+     "line": [
+      "hoje",
+      "eu",
+      "vou"
+     ],
+     "current": 1
+    },
+    {
+     "s": 1.55,
+     "e": 1.85,
+     "line": [
+      "hoje",
+      "eu",
+      "vou"
+     ],
+     "current": 2
+    },
+    {
+     "s": 1.85,
+     "e": 2.25,
+     "line": [
+      "falar",
+      "sobre"
+     ],
+     "current": 0
+    },
+    {
+     "s": 2.25,
+     "e": 2.55,
+     "line": [
+      "falar",
+      "sobre"
+     ],
+     "current": 1
+    },
+    {
+     "s": 2.55,
+     "e": 3.35,
+     "line": [
+      "dinheiro."
+     ],
+     "current": 0
+    },
+    {
+     "s": 4.0,
+     "e": 4.35,
+     "line": [
+      "Presta",
+      "atenção"
+     ],
+     "current": 0
+    },
+    {
+     "s": 4.35,
+     "e": 4.85,
+     "line": [
+      "Presta",
+      "atenção"
+     ],
+     "current": 1
+    },
+    {
+     "s": 4.85,
+     "e": 6.0,
+     "line": [
+      "superextraordinariamente"
+     ],
+     "current": 0
+    }
+   ]
+  },
+  {
+   "name": "wpl4-highlight",
+   "words": [
+    {
+     "w": "Olá",
+     "s": 0.0,
+     "e": 0.4
+    },
+    {
+     "w": "pessoal,",
+     "s": 0.5,
+     "e": 0.9
+    },
+    {
+     "w": "hoje",
+     "s": 1.0,
+     "e": 1.3
+    },
+    {
+     "w": "eu",
+     "s": 1.35,
+     "e": 1.5
+    },
+    {
+     "w": "vou",
+     "s": 1.55,
+     "e": 1.8
+    },
+    {
+     "w": "falar",
+     "s": 1.85,
+     "e": 2.2
+    },
+    {
+     "w": "sobre",
+     "s": 2.25,
+     "e": 2.5
+    },
+    {
+     "w": "dinheiro.",
+     "s": 2.55,
+     "e": 3.1
+    },
+    {
+     "w": "Presta",
+     "s": 4.0,
+     "e": 4.3
+    },
+    {
+     "w": "atenção",
+     "s": 4.35,
+     "e": 4.8
+    },
+    {
+     "w": "superextraordinariamente",
+     "s": 4.85,
+     "e": 5.9
+    }
+   ],
+   "words_per_line": 4,
+   "animation": "highlight",
+   "duration": 6.0,
+   "lines": [
+    [
+     "Olá",
+     "pessoal,"
+    ],
+    [
+     "hoje",
+     "eu",
+     "vou",
+     "falar"
+    ],
+    [
+     "sobre",
+     "dinheiro."
+    ],
+    [
+     "Presta",
+     "atenção"
+    ],
+    [
+     "superextraordinariamente"
+    ]
+   ],
+   "spans": [
+    {
+     "s": 0.0,
+     "e": 0.5,
+     "line": [
+      "Olá",
+      "pessoal,"
+     ],
+     "current": 0
+    },
+    {
+     "s": 0.5,
+     "e": 1.0,
+     "line": [
+      "Olá",
+      "pessoal,"
+     ],
+     "current": 1
+    },
+    {
+     "s": 1.0,
+     "e": 1.35,
+     "line": [
+      "hoje",
+      "eu",
+      "vou",
+      "falar"
+     ],
+     "current": 0
+    },
+    {
+     "s": 1.35,
+     "e": 1.55,
+     "line": [
+      "hoje",
+      "eu",
+      "vou",
+      "falar"
+     ],
+     "current": 1
+    },
+    {
+     "s": 1.55,
+     "e": 1.85,
+     "line": [
+      "hoje",
+      "eu",
+      "vou",
+      "falar"
+     ],
+     "current": 2
+    },
+    {
+     "s": 1.85,
+     "e": 2.25,
+     "line": [
+      "hoje",
+      "eu",
+      "vou",
+      "falar"
+     ],
+     "current": 3
+    },
+    {
+     "s": 2.25,
+     "e": 2.55,
+     "line": [
+      "sobre",
+      "dinheiro."
+     ],
+     "current": 0
+    },
+    {
+     "s": 2.55,
+     "e": 3.35,
+     "line": [
+      "sobre",
+      "dinheiro."
+     ],
+     "current": 1
+    },
+    {
+     "s": 4.0,
+     "e": 4.35,
+     "line": [
+      "Presta",
+      "atenção"
+     ],
+     "current": 0
+    },
+    {
+     "s": 4.35,
+     "e": 4.85,
+     "line": [
+      "Presta",
+      "atenção"
+     ],
+     "current": 1
+    },
+    {
+     "s": 4.85,
+     "e": 6.0,
+     "line": [
+      "superextraordinariamente"
+     ],
+     "current": 0
+    }
+   ]
+  },
+  {
+   "name": "wpl4-none",
+   "words": [
+    {
+     "w": "Olá",
+     "s": 0.0,
+     "e": 0.4
+    },
+    {
+     "w": "pessoal,",
+     "s": 0.5,
+     "e": 0.9
+    },
+    {
+     "w": "hoje",
+     "s": 1.0,
+     "e": 1.3
+    },
+    {
+     "w": "eu",
+     "s": 1.35,
+     "e": 1.5
+    },
+    {
+     "w": "vou",
+     "s": 1.55,
+     "e": 1.8
+    },
+    {
+     "w": "falar",
+     "s": 1.85,
+     "e": 2.2
+    },
+    {
+     "w": "sobre",
+     "s": 2.25,
+     "e": 2.5
+    },
+    {
+     "w": "dinheiro.",
+     "s": 2.55,
+     "e": 3.1
+    },
+    {
+     "w": "Presta",
+     "s": 4.0,
+     "e": 4.3
+    },
+    {
+     "w": "atenção",
+     "s": 4.35,
+     "e": 4.8
+    },
+    {
+     "w": "superextraordinariamente",
+     "s": 4.85,
+     "e": 5.9
+    }
+   ],
+   "words_per_line": 4,
+   "animation": "none",
+   "duration": 6.0,
+   "lines": [
+    [
+     "Olá",
+     "pessoal,"
+    ],
+    [
+     "hoje",
+     "eu",
+     "vou",
+     "falar"
+    ],
+    [
+     "sobre",
+     "dinheiro."
+    ],
+    [
+     "Presta",
+     "atenção"
+    ],
+    [
+     "superextraordinariamente"
+    ]
+   ],
+   "spans": [
+    {
+     "s": 0.0,
+     "e": 1.0,
+     "line": [
+      "Olá",
+      "pessoal,"
+     ],
+     "current": null
+    },
+    {
+     "s": 1.0,
+     "e": 2.25,
+     "line": [
+      "hoje",
+      "eu",
+      "vou",
+      "falar"
+     ],
+     "current": null
+    },
+    {
+     "s": 2.25,
+     "e": 3.35,
+     "line": [
+      "sobre",
+      "dinheiro."
+     ],
+     "current": null
+    },
+    {
+     "s": 4.0,
+     "e": 4.85,
+     "line": [
+      "Presta",
+      "atenção"
+     ],
+     "current": null
+    },
+    {
+     "s": 4.85,
+     "e": 6.0,
+     "line": [
+      "superextraordinariamente"
+     ],
+     "current": null
+    }
+   ]
+  },
+  {
+   "name": "wpl4-karaoke",
+   "words": [
+    {
+     "w": "Olá",
+     "s": 0.0,
+     "e": 0.4
+    },
+    {
+     "w": "pessoal,",
+     "s": 0.5,
+     "e": 0.9
+    },
+    {
+     "w": "hoje",
+     "s": 1.0,
+     "e": 1.3
+    },
+    {
+     "w": "eu",
+     "s": 1.35,
+     "e": 1.5
+    },
+    {
+     "w": "vou",
+     "s": 1.55,
+     "e": 1.8
+    },
+    {
+     "w": "falar",
+     "s": 1.85,
+     "e": 2.2
+    },
+    {
+     "w": "sobre",
+     "s": 2.25,
+     "e": 2.5
+    },
+    {
+     "w": "dinheiro.",
+     "s": 2.55,
+     "e": 3.1
+    },
+    {
+     "w": "Presta",
+     "s": 4.0,
+     "e": 4.3
+    },
+    {
+     "w": "atenção",
+     "s": 4.35,
+     "e": 4.8
+    },
+    {
+     "w": "superextraordinariamente",
+     "s": 4.85,
+     "e": 5.9
+    }
+   ],
+   "words_per_line": 4,
+   "animation": "karaoke",
+   "duration": 6.0,
+   "lines": [
+    [
+     "Olá",
+     "pessoal,"
+    ],
+    [
+     "hoje",
+     "eu",
+     "vou",
+     "falar"
+    ],
+    [
+     "sobre",
+     "dinheiro."
+    ],
+    [
+     "Presta",
+     "atenção"
+    ],
+    [
+     "superextraordinariamente"
+    ]
+   ],
+   "spans": [
+    {
+     "s": 0.0,
+     "e": 0.5,
+     "line": [
+      "Olá",
+      "pessoal,"
+     ],
+     "current": 0
+    },
+    {
+     "s": 0.5,
+     "e": 1.0,
+     "line": [
+      "Olá",
+      "pessoal,"
+     ],
+     "current": 1
+    },
+    {
+     "s": 1.0,
+     "e": 1.35,
+     "line": [
+      "hoje",
+      "eu",
+      "vou",
+      "falar"
+     ],
+     "current": 0
+    },
+    {
+     "s": 1.35,
+     "e": 1.55,
+     "line": [
+      "hoje",
+      "eu",
+      "vou",
+      "falar"
+     ],
+     "current": 1
+    },
+    {
+     "s": 1.55,
+     "e": 1.85,
+     "line": [
+      "hoje",
+      "eu",
+      "vou",
+      "falar"
+     ],
+     "current": 2
+    },
+    {
+     "s": 1.85,
+     "e": 2.25,
+     "line": [
+      "hoje",
+      "eu",
+      "vou",
+      "falar"
+     ],
+     "current": 3
+    },
+    {
+     "s": 2.25,
+     "e": 2.55,
+     "line": [
+      "sobre",
+      "dinheiro."
+     ],
+     "current": 0
+    },
+    {
+     "s": 2.55,
+     "e": 3.35,
+     "line": [
+      "sobre",
+      "dinheiro."
+     ],
+     "current": 1
+    },
+    {
+     "s": 4.0,
+     "e": 4.35,
+     "line": [
+      "Presta",
+      "atenção"
+     ],
+     "current": 0
+    },
+    {
+     "s": 4.35,
+     "e": 4.85,
+     "line": [
+      "Presta",
+      "atenção"
+     ],
+     "current": 1
+    },
+    {
+     "s": 4.85,
+     "e": 6.0,
+     "line": [
+      "superextraordinariamente"
+     ],
+     "current": 0
+    }
+   ]
+  },
+  {
+   "name": "duration-clamp",
+   "words": [
+    {
+     "w": "Olá",
+     "s": 0.0,
+     "e": 0.4
+    },
+    {
+     "w": "pessoal,",
+     "s": 0.5,
+     "e": 0.9
+    },
+    {
+     "w": "hoje",
+     "s": 1.0,
+     "e": 1.3
+    }
+   ],
+   "words_per_line": 2,
+   "animation": "highlight",
+   "duration": 1.1,
+   "lines": [
+    [
+     "Olá",
+     "pessoal,"
+    ],
+    [
+     "hoje"
+    ]
+   ],
+   "spans": [
+    {
+     "s": 0.0,
+     "e": 0.5,
+     "line": [
+      "Olá",
+      "pessoal,"
+     ],
+     "current": 0
+    },
+    {
+     "s": 0.5,
+     "e": 1.0,
+     "line": [
+      "Olá",
+      "pessoal,"
+     ],
+     "current": 1
+    },
+    {
+     "s": 1.0,
+     "e": 1.1,
+     "line": [
+      "hoje"
+     ],
+     "current": 0
+    }
+   ]
+  }
+ ]
+}

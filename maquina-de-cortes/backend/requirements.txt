@@ -1,0 +1,24 @@
+# Núcleo (API, banco, testes)
+fastapi>=0.115
+uvicorn[standard]>=0.32
+sqlmodel>=0.0.22
+pydantic-settings>=2.6
+httpx>=0.28
+python-multipart>=0.0.20
+pytest>=8.3
+
+# Download (Fase 1)
+yt-dlp[default]   # [default] inclui yt-dlp-ejs (desafios JS do YouTube; usa o node como runtime)
+
+# Áudio/transcrição (Fase 2)
+numpy
+faster-whisper>=1.1
+av<17                 # PyAV 17+ removeu `metadata_errors`, usado pelo faster-whisper 1.2
+# GPU NVIDIA: libs CUDA 12 para o ctranslate2 (run.py ajusta LD_LIBRARY_PATH/PATH). Não existem no macOS.
+nvidia-cublas-cu12; sys_platform != "darwin"
+nvidia-cudnn-cu12>=9,<10; sys_platform != "darwin"
+
+# Visão (Fase 5)
+opencv-python-headless
+mediapipe            # só o FaceLandmarker: abertura dos lábios p/ "quem está falando" (rosto: YuNet)
+scenedetect

@@ -1,0 +1,86 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { api, post } from './client'
+import { jobsKey, upsertJob } from './jobs'
+import type { Clip, Job, ScoreBreakdown, Template } from './types'
+
+export const clipsKey = (projectId: number) => ['clips', projectId] as const
+
+export const useClips = (projectId: number, enabled = true) =>
+  useQuery({ queryKey: clipsKey(projectId), queryFn: () => api<Clip[]>(`/projects/${projectId}/clips`), enabled })
+
+export function upsertClip(list: Clip[] | undefined, c: Clip): Clip[] {
+  if (!list) return [c]
+  const i = list.findIndex((x) => x.id === c.id)
+  if (i === -1) return [...list, c]
+  if (list[i].updated_at > c.updated_at) return list
+  const copy = list.slice()
+  copy[i] = c
+  return copy
+}
+
+export function parseBreakdown(c: Clip): ScoreBreakdown {
+  try {
+    return JSON.parse(c.score_breakdown_json || '{}')
+  } catch {
+    return {}
+  }
+}
+
+export function useClipActions(projectId: number) {
+  const qc = useQueryClient()
+  const put = (c: Clip) => qc.setQueryData<Clip[]>(clipsKey(projectId), (old) => upsertClip(old, c))
+  return {
+    update: useMutation({
+      mutationFn: ({ id, ...patch }: Partial<Clip> & { id: number }) =>
+        api<Clip>(`/clips/${id}`, { method: 'PATCH', body: JSON.stringify(patch) }),
+      onSuccess: put,
+    }),
+    create: useMutation({
+      mutationFn: (body: { start_s: number; end_s: number; title?: string }) => post<Clip>(`/projects/${projectId}/clips`, body),
+      onSuccess: put,
+    }),
+    duplicate: useMutation({ mutationFn: (id: number) => post<Clip>(`/clips/${id}/duplicate`), onSuccess: put }),
+    render: useMutation({
+      mutationFn: (id: number) => post<Job>(`/clips/${id}/render`),
+      onSuccess: (j) => qc.setQueryData<Job[]>(jobsKey, (old) => upsertJob(old, j)),
+    }),
+    renderAll: useMutation({
+      mutationFn: () => post<Job[]>(`/projects/${projectId}/render-all`),
+      onSuccess: (js) => qc.setQueryData<Job[]>(jobsKey, (old) => js.reduce((acc, j) => upsertJob(acc, j), old ?? [])),
+    }),
+    remove: useMutation({
+      mutationFn: (id: number) => api<{ ok: boolean }>(`/clips/${id}`, { method: 'DELETE' }),
+      onSuccess: (_r, id) => qc.setQueryData<Clip[]>(clipsKey(projectId), (old) => old?.filter((c) => c.id !== id)),
+    }),
+  }
+}
+
+export const clipFileUrl = (id: number, download = false) => `/api/clips/${id}/file${download ? '?download=1' : ''}`
+export const clipPreviewUrl = (c: Clip) =>
+  `/api/media/projects/${c.project_id}/clips/${c.id}/preview.jpg?v=${encodeURIComponent(c.rendered_at ?? '')}`
+
+export const useTemplates = () =>
+  useQuery({ queryKey: ['templates'], queryFn: () => api<Template[]>('/templates'), staleTime: Infinity })
+
+export function useApplyTemplate(projectId: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { template: string; render: boolean }) =>
+      post<{ ok: boolean; clips: number; renders: number }>(`/projects/${projectId}/apply-template`, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: clipsKey(projectId) })
+      qc.invalidateQueries({ queryKey: ['jobs'] })
+      qc.invalidateQueries({ queryKey: ['project', projectId] })
+    },
+  })
+}
+
+export const REFRAME_LABELS: Record<Clip['reframe_mode'], string> = {
+  auto: 'Seguir rosto',
+  speaker: 'Quem fala no centro',
+  center: 'Centro',
+  blur_fit: 'Inteiro + fundo borrado',
+  split: 'Tela dividida',
+  gameplay: 'Webcam + jogo',
+  manual: 'Manual',
+}
