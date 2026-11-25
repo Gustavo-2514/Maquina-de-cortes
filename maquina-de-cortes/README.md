@@ -637,7 +637,7 @@ maquina-de-cortes/
 - **Testes:** `cd backend && ../.venv/bin/pytest` e `cd frontend && npm test`.
 - **Decisões de implementação e medições:** [`DECISIONS.md`](DECISIONS.md). Especificação original: [`../MAQUINA_DE_CORTES.md`](../MAQUINA_DE_CORTES.md).
 
-Contribuições são bem-vindas: abra uma *issue* para conversar sobre a ideia ou mande um *pull request*. Testes no Windows e no macOS ajudam muito.
+Contribuições são bem-vindas! Leia o [guia de contribuição](../CONTRIBUTING.md): ele explica como preparar o ambiente, o fluxo de *pull requests* e o padrão de commits ([Conventional Commits](https://www.conventionalcommits.org/pt-br/v1.0.0/), em inglês). Testes no Windows e no macOS ajudam muito.
 
 ---
 

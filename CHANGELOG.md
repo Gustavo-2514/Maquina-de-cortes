@@ -7,6 +7,11 @@ e o projeto usa [versionamento semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+### Adicionado
+
+- Guia de contribuição (`CONTRIBUTING.md`), padrão de commits Conventional Commits com validação por hook
+  (`.githooks/commit-msg`), modelo de mensagem (`.gitmessage`) e modelo de pull request.
+
 ## [0.1.0] - 2026-11-25
 
 Primeira versão pública da **Máquina de Cortes**.
