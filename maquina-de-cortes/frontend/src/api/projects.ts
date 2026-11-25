@@ -32,8 +32,8 @@ export function upsertProject(list: Project[] | undefined, p: Project): Project[
 
 export const DEFAULT_ANALYSIS: AnalysisOptions = {
   num_clips: 10,
-  min_s: 20,
-  max_s: 60,
+  min_s: 60,
+  max_s: 90,
   extra_prompt: '',
   language: 'pt',
   caption_style: 'hormozi',

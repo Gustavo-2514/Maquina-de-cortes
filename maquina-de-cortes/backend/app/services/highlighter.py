@@ -25,10 +25,15 @@ END_BREATH_S = 0.15
 SNAP_RADIUS_S = 4.0  # distância máxima para "grudar" numa borda de frase
 SENTENCE_END = (".", "?", "!", "…", '."', '?"', '!"')
 WEIGHTS = {"gancho": 0.35, "completude": 0.25, "emocao": 0.25, "clareza": 0.15}
+MIN_RATIO = 0.75  # aceita cortes até 75% do mínimo (ex.: 45 s com mínimo de 60) quando não dá para esticar
+SHORT_PENALTY = 12.0  # pontos tirados (proporcionalmente) de cortes abaixo do mínimo → a maioria fica na faixa
 
 SYSTEM_PROMPT = """Você é um editor especialista em vídeos curtos virais (TikTok, Reels, Shorts).
 Receberá a transcrição de um trecho de vídeo com timestamps.
 Encontre os melhores momentos para virar cortes independentes de {min_s} a {max_s} segundos.
+DURAÇÃO É OBRIGATÓRIA: cada corte precisa ter NO MÍNIMO {min_s} segundos (end - start >= {min_s}).
+Cortes mais curtos serão descartados. Não escolha só a frase de impacto: inclua o contexto/setup antes
+e o desenvolvimento e o desfecho depois, formando um mini-vídeo completo. Confira end - start antes de responder.
 Um bom corte:
 - começa com um GANCHO forte nos primeiros 3 segundos (pergunta, afirmação polêmica, número, promessa, conflito);
 - é compreensível sozinho, sem contexto do resto do vídeo;
@@ -224,7 +229,8 @@ def transcript_lines(transcript: dict, t0: float, t1: float, rms: np.ndarray | N
 
 def build_messages(lines: str, t0: float, t1: float, k: int, min_s: float, max_s: float, extra: str) -> list[dict]:
     extra_txt = f"Instruções específicas deste vídeo:\n{extra.strip()}" if extra.strip() else ""
-    user = (f"Trecho de {t0:.0f}s a {t1:.0f}s do vídeo. Encontre até {k} cortes de {min_s:.0f} a {max_s:.0f} segundos.\n\n"
+    user = (f"Trecho de {t0:.0f}s a {t1:.0f}s do vídeo. Encontre até {k} cortes de {min_s:.0f} a {max_s:.0f} segundos "
+            f"(nenhum com menos de {min_s:.0f} s).\n\n"
             f"TRANSCRIÇÃO:\n{lines}")
     return [{"role": "system", "content": SYSTEM_PROMPT.format(min_s=f"{min_s:.0f}", max_s=f"{max_s:.0f}", extra=extra_txt)},
             {"role": "user", "content": user}]
@@ -425,11 +431,15 @@ def postprocess(cands: list[dict], words: Words, duration: float, min_s: float, 
         ei = prefer_sentence_end(words, si, ei, min_s, max_s)
         start_s = round(words.w[si]["s"], 3)
         end_s = words.end_time(ei, duration)
-        if end_s - start_s < min_s * 0.75:  # não deu para chegar perto do mínimo (vídeo curto/pouca fala)
+        dur = end_s - start_s
+        if dur < min_s * MIN_RATIO:  # não deu para chegar perto do mínimo (vídeo curto/pouca fala)
             continue
         h = heuristic_score(words, si, ei, rms, rms_mean, heuristic)
         llm = llm_score(c["scores"])
-        score = round(llm_weight * llm + (1 - llm_weight) * h["heuristica"], 1)
+        score = llm_weight * llm + (1 - llm_weight) * h["heuristica"]
+        if dur < min_s:  # abaixo do mínimo: aceito, mas perde para os que batem a duração
+            score -= SHORT_PENALTY * (min_s - dur) / (min_s * (1 - MIN_RATIO))
+        score = round(score, 1)
         out.append({
             "start_s": start_s, "end_s": end_s,
             "title": (c["title"] or first_sentence(words, si, ei, 8))[:60],

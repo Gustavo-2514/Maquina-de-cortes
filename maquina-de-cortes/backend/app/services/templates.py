@@ -42,7 +42,7 @@ TEMPLATES: dict[str, Template] = {t.key: t for t in [
             "Este vídeo é uma GAMEPLAY com o streamer narrando. Priorize: jogadas decisivas (clutch, virada, vitória, "
             "kill múltipla, jogada improvável), falhas engraçadas, sustos e REAÇÕES FORTES do streamer (gritos, risadas, "
             "comemoração, raiva). Falas marcadas com [VOLUME ALTO] costumam ser reações — use como pista. "
-            "O corte deve começar um pouco antes do lance e terminar logo depois da reação."
+            "O corte deve incluir o contexto que leva ao lance (a construção da jogada), o lance e a reação completa do streamer — não só o segundo do lance."
         ),
         loudness_hints=True, llm_weight=0.6, heuristic="reactions",
         tips=["Se a webcam não for detectada, ajuste o retângulo no editor (aba Enquadrar)."],

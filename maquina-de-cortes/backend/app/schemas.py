@@ -34,8 +34,8 @@ class PathRequest(BaseModel):
 
 class AnalysisOptions(BaseModel):
     num_clips: int = Field(default=10, ge=1, le=50)
-    min_s: float = Field(default=20, ge=5, le=600)
-    max_s: float = Field(default=60, ge=10, le=900)
+    min_s: float = Field(default=60, ge=5, le=600)
+    max_s: float = Field(default=90, ge=10, le=900)
     extra_prompt: str = Field(default="", max_length=2000)
     language: str = "pt"  # "auto" = detectar
     caption_style: str = "hormozi"
