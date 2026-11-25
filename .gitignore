@@ -1,3 +1,16 @@
 .claude/
 .env
 *.log
+
+# Imagens e vídeos de cortes/capas/thumbnails nunca vão para o git.
+# Exceção: as mídias do próprio app (marca, hero, favicon) em frontend/public/.
+*.mp4
+*.mov
+*.mkv
+*.webm
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+!maquina-de-cortes/frontend/public/**
