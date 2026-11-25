@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { NativeSelect } from '@/components/ui/input'
 import { parseReview, reviewIsCurrent, useClipActions, useClipReviewEstimate, useReviewEstimate } from '@/api/clips'
-import { CLAUDE_MODELS_FALLBACK, useClaudeModels, useUserSettings } from '@/api/system'
+import { useAiModels, useUserSettings } from '@/api/system'
 import type { Clip, Job, ReviewVerdict } from '@/api/types'
 import { formatTime } from '@/lib/clip'
 import { formatTokens, formatUsd } from '@/lib/format'
@@ -61,7 +61,9 @@ export function ReviewDetails({ c, job, error }: { c: Clip; job?: Job; error?: s
       <p className="text-muted-foreground">
         {r.cost?.provider === 'claude-code'
           ? `${r.model} · sem custo em US$ (uso do plano${r.cost.tokens_approx ? ` ≈ ${formatTokens(r.cost.tokens_approx)} tokens` : ''})`
-          : `${r.model} · custou ${formatUsd(r.cost?.usd)}`}
+          : r.cost?.priced === false
+            ? `${r.model} · ${r.cost.input_tokens + r.cost.output_tokens} tokens (preço não configurado)`
+            : `${r.model} · custou ${formatUsd(r.cost?.usd)}`}
         {!current && ' · feita num render anterior — revise de novo para o MP4 atual'}
       </p>
     </div>
@@ -71,9 +73,11 @@ export function ReviewDetails({ c, job, error }: { c: Clip; job?: Job; error?: s
 /** Confirmação com custo estimado antes de revisar (um corte ou todos os renderizados). */
 export function ReviewDialog({ projectId, clip, onClose }: { projectId: number; clip?: Clip; onClose: () => void }) {
   const { data: settings } = useUserSettings()
-  const { data: models, isError: modelsError } = useClaudeModels()
+  const { data: models, isError: modelsError } = useAiModels()
   const [model, setModel] = useState<string | null>(null)
-  const m = model ?? settings?.claude_model ?? 'claude-opus-5-5'
+  const m = model ?? settings?.review_model ?? models?.default_review ?? 'claude-opus-5-5'
+  const visionModels = models?.models.filter((x) => x.vision) ?? []
+  const current = visionModels.find((x) => x.ref === m)
   const one = useClipReviewEstimate(clip?.id ?? 0, m, !!clip)
   const all = useReviewEstimate(projectId, m, !clip)
   const est = clip ? one.data : all.data
@@ -93,21 +97,23 @@ export function ReviewDialog({ projectId, clip, onClose }: { projectId: number; 
     <Dialog
       open
       onClose={onClose}
-      title="Revisão visual com Claude"
+      title="Revisão visual com IA"
       description={clip ? clip.title || 'Corte' : 'Cortes renderizados ainda sem revisão para o MP4 atual'}
       className="max-w-lg"
     >
       <div className="space-y-4 text-sm">
         <p className="text-muted-foreground">
-          O Claude olha 8 quadros do MP4 final e a fala do corte e aponta rosto cortado, legenda tapando algo, gancho fraco ou final no
-          meio da frase. <b>É pago</b>: usa a sua chave da Anthropic.
+          A IA olha 8 quadros do MP4 final e a fala do corte e aponta rosto cortado, legenda tapando algo, gancho fraco ou final no meio
+          da frase. <b>É pago</b>: usa a sua chave do {current?.provider_label ?? 'provedor escolhido'}.
         </p>
         <label className="block space-y-1.5">
           <span className="font-medium">Modelo</span>
           <NativeSelect value={m} onChange={(e) => setModel(e.target.value)}>
-            {(models?.models ?? CLAUDE_MODELS_FALLBACK).map((x) => (
-              <option key={x.id} value={x.id}>
+            {!current && <option value={m}>{m}</option>}
+            {visionModels.map((x) => (
+              <option key={x.ref} value={x.ref} disabled={!x.configured}>
                 {x.label}
+                {!x.configured && ' (sem chave)'}
               </option>
             ))}
           </NativeSelect>
@@ -121,24 +127,25 @@ export function ReviewDialog({ projectId, clip, onClose }: { projectId: number; 
         {est && (
           <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-xs">
             <div className="mb-1 flex items-center gap-1.5 text-sm font-medium">
-              <CircleDollarSign className="size-4" /> Custo estimado: ≈ {formatUsd(est.usd)}
+              <CircleDollarSign className="size-4" /> Custo estimado: {est.usd == null ? 'sem preço configurado' : `≈ ${formatUsd(est.usd)}`}
               {!clip && count > 0 && <span className="font-normal text-muted-foreground">({count} corte(s))</span>}
             </div>
             <p className="text-muted-foreground">
-              ~{formatTokens(est.input_tokens)} tokens de entrada (imagens + fala) · ~{formatTokens(est.output_tokens)} de saída. Preços de
-              tabela de {est.prices_as_of}; o custo real aparece em cada corte ao terminar.
+              ~{formatTokens(est.input_tokens)} tokens de entrada (imagens + fala) · ~{formatTokens(est.output_tokens)} de saída.{' '}
+              {est.usd == null ? 'Informe o preço do modelo em Configurações para ver o valor em US$.' : `Preços de ${est.prices_as_of || 'tabela'};`} o custo
+              real aparece em cada corte ao terminar.
             </p>
           </div>
         )}
         {!clip && all.data && count === 0 && <p className="text-xs text-muted-foreground">Nada a revisar: renderize cortes ou todos já foram revisados.</p>}
-        {noKey && <p className="text-xs text-destructive">Configure a chave da Anthropic em Configurações (ou ANTHROPIC_API_KEY) para usar.</p>}
+        {noKey && <p className="text-xs text-destructive">Configure a chave do {current?.provider_label ?? 'provedor'} em Configurações para usar.</p>}
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
           <Button onClick={go} disabled={busy || !est || count === 0 || noKey}>
             {busy ? <Loader2 className="animate-spin" /> : <ShieldCheck />}
-            {est ? `Revisar · ≈ ${formatUsd(est.usd)}` : 'Revisar'}
+            {est?.usd != null ? `Revisar · ≈ ${formatUsd(est.usd)}` : 'Revisar'}
           </Button>
         </div>
       </div>

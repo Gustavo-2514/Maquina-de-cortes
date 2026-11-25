@@ -41,7 +41,7 @@ class AnalysisOptions(BaseModel):
     caption_style: str = "hormozi"
     reframe_mode: Literal["auto", "speaker", "center", "blur_fit", "split", "gameplay"] = "auto"
     template: str = "geral"  # geral | gameplay | podcast | debate (services/templates.py)
-    llm: str = "ollama"  # "ollama" (local, grátis) ou um model id do Claude (pago — services/claude.py)
+    llm: str = "ollama"  # "ollama" (local, grátis) ou a ref de um modelo pago (services/ai.py)
 
 
 class ProjectCreate(BaseModel):
@@ -144,6 +144,12 @@ class PostTexts(BaseModel):
     shorts: dict = Field(default_factory=dict)
 
 
+class AiKeyTest(BaseModel):
+    provider: str
+    api_key: str = ""  # vazio/mascarado = a chave salva
+    base_url: str = ""  # só para o provedor "custom" (vazio = o salvo)
+
+
 class ClaudeTest(BaseModel):
     api_key: str = ""  # vazio/mascarado = a chave salva
     model: str = "claude-haiku-5-5"
@@ -160,7 +166,7 @@ class ReviewSubmit(BaseModel):
 
 
 class ReviewRequest(BaseModel):
-    """Revisão visual pelo Claude (paga). No projeto, `only_missing` pula cortes já revisados neste render."""
+    """Revisão visual por IA paga. No projeto, `only_missing` pula cortes já revisados neste render."""
 
-    model: str = "claude-opus-5-5"
+    model: str = ""  # ref do modelo (services/ai.py); vazio = o padrão das Configurações
     only_missing: bool = True

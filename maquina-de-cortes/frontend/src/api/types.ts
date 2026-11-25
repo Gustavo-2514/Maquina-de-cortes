@@ -112,7 +112,7 @@ export interface AnalysisOptions {
   caption_style: string
   reframe_mode: 'auto' | 'speaker' | 'center' | 'blur_fit' | 'split' | 'gameplay'
   template: string
-  /** 'ollama' (local, grátis) ou o id de um modelo do Claude (pago) */
+  /** 'ollama' (local, grátis) ou a ref de um modelo pago ('claude-opus-5-5', 'openrouter:openai/gpt-…') */
   llm: string
 }
 
@@ -225,9 +225,14 @@ export interface CaptionStyle {
   is_builtin: boolean
 }
 
-/** Custo real de uma chamada paga (Claude), medido pelo backend a partir do `usage` da API. */
+/** Custo real de uma chamada paga, medido pelo backend a partir do `usage` da API. */
 export interface AiCost {
-  provider: 'claude' | 'claude-code'
+  /** 'claude' | 'claude-code' | 'openrouter' | 'openai' | 'gemini' | … */
+  provider: string
+  /** false = algum modelo sem preço configurado (usd não conta essas chamadas) */
+  priced?: boolean
+  /** true = o provedor não informou o uso; tokens estimados pelo tamanho do texto */
+  approx?: boolean
   tokens_approx?: number
   models: string[]
   calls: number
@@ -246,7 +251,7 @@ export interface ProjectAiCost {
 
 export type ReviewVerdict = 'ok' | 'warn' | 'bad'
 
-/** Clip.review_json — revisão visual pelo Claude */
+/** Clip.review_json — revisão visual pela IA paga */
 export interface ClipReview {
   verdict?: ReviewVerdict
   summary?: string
@@ -264,9 +269,12 @@ export interface CostEstimate {
   calls: number
   input_tokens: number
   output_tokens: number
-  usd: number
-  max_usd?: number
+  /** null = modelo sem preço configurado */
+  usd: number | null
+  max_usd?: number | null
   prices_as_of: string
-  /** há chave da Anthropic (Configurações ou ANTHROPIC_API_KEY) */
+  provider?: string
+  provider_label?: string
+  /** há chave do provedor (Configurações ou variável de ambiente) */
   configured?: boolean
 }

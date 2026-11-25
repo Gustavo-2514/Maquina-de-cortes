@@ -1,4 +1,4 @@
-"""Revisão visual de um corte renderizado pelo Claude (pago, opcional).
+"""Revisão visual de um corte renderizado por uma IA paga com visão (Claude, GPT, Gemini… — opcional).
 
 Extrai N quadros do MP4 final + a transcrição do corte e pede um checklist objetivo:
 crop cortando rosto, legenda tapando algo, gancho fraco, final no meio da frase etc.
@@ -11,7 +11,8 @@ import json
 from collections.abc import Callable
 from pathlib import Path
 
-from . import claude
+from . import ai
+from . import highlighter
 from .ffmpeg import run_ffmpeg
 
 N_FRAMES = 8
@@ -107,10 +108,12 @@ def parse(raw: str) -> dict:
     return {"verdict": verdict, "summary": str(data.get("summary", "")).strip()[:300], "issues": issues[:6]}
 
 
-def review(api_key: str, model: str, frames: list[tuple[float, Path]], speech: str, title: str, duration: float,
-           is_canceled: Callable[[], bool] = lambda: False) -> tuple[dict, dict]:
-    """→ (resultado, custo real)."""
-    meter = claude.CostMeter()
-    raw = claude.create(claude.make_client(api_key), model, SYSTEM, build_content(frames, speech, title, duration),
-                        SCHEMA, meter, is_canceled)
-    return parse(raw), meter.as_dict()
+def review(us, model: ai.ModelInfo, frames: list[tuple[float, Path]], speech: str, title: str,  # noqa: ANN001
+           duration: float, is_canceled: Callable[[], bool] = lambda: False) -> tuple[dict, dict]:
+    """→ (resultado, custo real). `us` = UserSettings (chaves dos provedores)."""
+    meter = ai.meter_for(model)
+    raw = ai.create(us, model, SYSTEM, build_content(frames, speech, title, duration), SCHEMA, meter, is_canceled)
+    try:
+        return parse(raw), meter.as_dict()
+    except ValueError as e:
+        raise highlighter.HighlightError("A IA não devolveu um JSON válido na revisão.", raw[:1500]) from e

@@ -55,7 +55,7 @@ export const JOB_TYPE_LABELS: Record<string, string> = {
   reframe: 'Análise de rostos',
   render: 'Render',
   post_pack: 'Pacote para postar',
-  review: 'Revisão (Claude)',
+  review: 'Revisão visual (IA)',
 }
 
 /** Dólares para custos de IA paga: centavos com 2 casas; frações de centavo com 3–4. */

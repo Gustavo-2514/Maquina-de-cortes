@@ -14,7 +14,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT_DIR = Path(__file__).resolve().parents[2]  # maquina-de-cortes/
@@ -45,6 +45,21 @@ class Settings(BaseSettings):
             (self.data_dir / sub).mkdir(parents=True, exist_ok=True)
 
 
+class AiModel(BaseModel):
+    """Modelo de um provedor compatível com a API da OpenAI (OpenAI, Gemini, OpenRouter…) adicionado pelo usuário.
+
+    Preços em US$ por milhão de tokens; None = desconhecido (o app mostra os tokens, mas não estima em US$).
+    No OpenRouter vêm do catálogo público; nos outros, o usuário informa."""
+
+    provider: str
+    id: str
+    label: str = ""
+    input_per_mtok: float | None = None
+    output_per_mtok: float | None = None
+    vision: bool = True  # aceita imagens (necessário para a revisão visual)
+    prices_as_of: str = ""
+
+
 class UserSettings(BaseModel):
     """Preferências do usuário (tela Configurações). 'auto' = decidir pelo hardware."""
 
@@ -61,7 +76,19 @@ class UserSettings(BaseModel):
     # Claude (opcional, pago): vazio = usa ANTHROPIC_API_KEY do ambiente. Nunca sai deste computador
     # a não ser para a própria API da Anthropic.
     anthropic_api_key: str = ""
-    claude_model: str = "claude-opus-5-5"
+    claude_model: str = "claude-opus-5-5"  # legado: modelo da revisão visual antes de existir `review_model`
+    # Outros provedores pagos (services/ai.py): chave por provedor ("openai", "gemini", "openrouter"…);
+    # vazia = variável de ambiente do provedor (OPENAI_API_KEY etc.). Mesma regra: só vai para a API do provedor.
+    api_keys: dict[str, str] = {}
+    custom_base_url: str = ""  # provedor "custom": qualquer API compatível com a OpenAI (LM Studio, Together…)
+    ai_models: list[AiModel] = []
+    review_model: str = ""  # ref do modelo padrão da revisão visual ("claude-opus-5-5", "openrouter:openai/gpt-…")
+
+    @model_validator(mode="after")
+    def _migrate(self) -> UserSettings:
+        if not self.review_model:
+            self.review_model = self.claude_model
+        return self
 
 
 @lru_cache

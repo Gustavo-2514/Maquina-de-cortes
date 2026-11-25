@@ -315,3 +315,24 @@ Registro de escolhas onde a especificação era ambígua ou o ambiente exigiu ad
   login dela, então a revisão também pode ser feita pelo Claude Code (skill `/cortes`: `quadros <cid>` extrai os mesmos
   8 quadros + fala; `salvar-revisao` grava via `PUT /clips/{id}/review`). Fica com `cost.provider = "claude-code"`,
   `usd = 0` e uso aproximado do plano em `tokens_approx`; não entra em `Project.ai_cost_json`.
+
+## Outros provedores pagos por chave + OpenRouter (2026-11-25)
+
+- **Refs de modelo** (`services/ai.py`): ids do Claude continuam sem prefixo (`claude-opus-5-5`, compatível com dados
+  antigos); os demais são `<provedor>:<id>` (`openrouter:openai/gpt-…`, `gemini:gemini-…`). `AnalysisOptions.llm`, o job
+  `review` e `UserSettings.review_model` (novo; migra de `claude_model`) guardam a ref.
+- **Provedores**: Anthropic (SDK, `claude.py`) + OpenRouter, OpenAI, Google Gemini (endpoint de compatibilidade),
+  DeepSeek, xAI, Groq, Mistral e "custom" (qualquer base URL compatível com OpenAI). Todos os não-Anthropic passam por
+  um só cliente, `openai_compat.py`, só com `httpx` (nenhuma dependência nova). Chaves em `UserSettings.api_keys`
+  (mascaradas como a da Anthropic) ou na variável de ambiente do provedor (`OPENROUTER_API_KEY`, `OPENAI_API_KEY`…).
+- **Parâmetros adaptativos**: pede `response_format: json_schema` (strict); se o provedor recusar com 400/422, rebaixa
+  para `json_object` (com o schema no prompt) e depois para nada; idem para `temperature` e `stream_options`. Um 400
+  não gera tokens, então a repetição não cobra em dobro. A resposta passa por `strip_fences` (```json, `<think>`).
+- **Modelos e preços**: os do Claude vêm embutidos. Os outros o usuário adiciona em Configurações → IA paga. No
+  OpenRouter o catálogo público (`/api/v1/models`, sem chave) traz preço por token e se aceita imagem; nos demais o app
+  lista os IDs via `GET /models` com a chave salva e o preço é digitado. Sem preço: estimativa e custo em US$ ficam
+  `null`/`priced: false` e a UI mostra só os tokens.
+- **Custo real**: OpenRouter devolve `usage.cost` (pedido com `usage.include`), usado como está; os outros = tokens do
+  `usage` × preço configurado. Se o provedor não mandar `usage`, os tokens são estimados pelo texto (`approx: true`).
+- **Testar chave é grátis** fora do Claude: OpenRouter → `GET /key` (mostra o saldo do limite); demais → `GET /models`.
+- A revisão visual exige modelo com visão (`vision`); imagens viram `image_url` com data URL base64.

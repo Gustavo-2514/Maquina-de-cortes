@@ -130,7 +130,8 @@ export interface Estimate {
   total_seconds: number
   gpu: boolean
   stages: { key: string; label: string; seconds: number; cached: boolean }[]
-  claude: { configured: boolean; from_transcript: boolean; prices_as_of: string; models: CostEstimate[] }
+  /** IA paga: Claude + modelos adicionados nas Configurações */
+  ai: { configured: boolean; from_transcript: boolean; prices_as_of: string; models: CostEstimate[] }
 }
 
 export const useEstimate = (id: number, language: string, enabled: boolean, numClips = 10, template = 'geral') =>

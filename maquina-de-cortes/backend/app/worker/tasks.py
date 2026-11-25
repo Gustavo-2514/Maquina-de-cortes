@@ -400,13 +400,14 @@ def handle_analyze(ctx: JobContext) -> None:
             ctx.report(pct, f"IA lendo o trecho {state['win'] + 1} de {state['n']}…")
 
         meter = None
-        if opts.llm != "ollama":  # Claude (pago): custo real medido em cada chamada
-            from ..services import claude
+        if opts.llm != "ollama":  # IA paga (Claude, OpenRouter, OpenAI…): custo real medido em cada chamada
+            from ..services import ai
 
-            if opts.llm not in claude.PRICES:
-                raise RuntimeError(f"Modelo de IA desconhecido: {opts.llm}")
-            meter = claude.CostMeter()
-            llm = claude.claude_chat(us.anthropic_api_key, opts.llm, meter, ctx.is_canceled, on_chunk)
+            info = ai.resolve(us, opts.llm)
+            if info is None:
+                raise RuntimeError(f"Modelo de IA desconhecido: {opts.llm} (foi removido das Configurações?)")
+            meter = ai.meter_for(info)
+            llm = ai.chat(us, info, meter, ctx.is_canceled, on_chunk)
         else:
             llm = highlighter.ollama_chat(us.ollama_url, us.ollama_model, ctx.is_canceled, on_chunk)
         try:
@@ -825,8 +826,8 @@ def handle_post_pack(ctx: JobContext) -> None:
 
 
 def handle_review(ctx: JobContext) -> None:
-    """Revisão visual do MP4 final pelo Claude (pago). params: {"model": str}."""
-    from ..services import claude, review
+    """Revisão visual do MP4 final por uma IA paga com visão. params: {"model": ref do modelo}."""
+    from ..services import ai, review
 
     with Session(engine) as s:
         clip = s.get(Clip, ctx.ref_id)
@@ -835,9 +836,11 @@ def handle_review(ctx: JobContext) -> None:
         job = s.get(Job, ctx.job_id)
         s.expunge(clip)
         params = json.loads(job.params_json or "{}") if job else {}
-    model = params.get("model") or claude.DEFAULT_MODEL
-    if model not in claude.PRICES:
-        raise RuntimeError(f"Modelo desconhecido: {model}")
+    us = load_user_settings()
+    model = params.get("model") or us.review_model
+    info = ai.resolve(us, model)
+    if info is None:
+        raise RuntimeError(f"Modelo desconhecido: {model} (foi removido das Configurações?)")
     mp4 = Path(clip.output_path) if clip.output_path else None
     if not mp4 or not mp4.is_file() or clip.status != "rendered":
         raise RuntimeError("Renderize o corte antes de revisar.")
@@ -851,10 +854,9 @@ def handle_review(ctx: JobContext) -> None:
     all_words = [w for seg in transcript["segments"] for w in seg["words"]]
     words = captions.clip_words(all_words, clip.start_s, clip.end_s,
                                 captions.parse_overrides(clip.caption_overrides_json).words)
-    ctx.report(30, f"Claude revisando {len(frames)} quadros…", force=True)
-    us = load_user_settings()
+    ctx.report(30, f"{info.label.split(' · ')[0]} revisando {len(frames)} quadros…", force=True)
     try:
-        result, cost = review.review(us.anthropic_api_key, model, frames, review.speech_lines(words), clip.title,
+        result, cost = review.review(us, info, frames, review.speech_lines(words), clip.title,
                                      duration, ctx.is_canceled)
     except highlighter.Canceled:
         raise JobCanceled() from None
@@ -865,7 +867,8 @@ def handle_review(ctx: JobContext) -> None:
             "rendered_at": clip.rendered_at.isoformat() if clip.rendered_at else None}
     _update_clip(clip.id, review_json=json.dumps(data, ensure_ascii=False))  # type: ignore[arg-type]
     label = {"ok": "pode postar", "warn": "vale ajustar", "bad": "precisa corrigir"}[result["verdict"]]
-    ctx.report(100, f"Revisão: {label} · US$ {cost['usd']:.3f}".replace(".", ","), force=True)
+    price = f"US$ {cost['usd']:.3f}".replace(".", ",") if cost.get("priced", True) else "preço não configurado"
+    ctx.report(100, f"Revisão: {label} · {price}", force=True)
 
 
 HANDLERS: dict[str, Callable[[JobContext], None]] = {

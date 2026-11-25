@@ -163,7 +163,7 @@ export const reviewIsCurrent = (c: Clip, r: ClipReview = parseReview(c)) => !!r.
 export interface ProjectReviewEstimate extends CostEstimate {
   clips: number
   clip_ids: number[]
-  per_clip_usd: number[]
+  per_clip_usd: (number | null)[]
 }
 
 export const useReviewEstimate = (projectId: number, model: string, enabled: boolean) =>

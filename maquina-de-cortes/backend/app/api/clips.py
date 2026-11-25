@@ -300,47 +300,54 @@ def _speech_chars(c: Clip) -> int:
         + 8 * max(1, len(words) // 12)
 
 
-def _claude_configured() -> bool:
-    import os
-
+def _check_model(model: str, require_key: bool = False):  # noqa: ANN202  (→ (UserSettings, ModelInfo))
+    """Modelo pago conhecido, com visão (a revisão manda imagens) e, se pedido, com chave configurada."""
     from ..config import load_user_settings
+    from ..services import ai
 
-    return bool(load_user_settings().anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY"))
-
-
-def _check_model(model: str, require_key: bool = False) -> None:
-    from ..services import claude
-
-    if model not in claude.PRICES:
+    us = load_user_settings()
+    info = ai.resolve(us, model or us.review_model)
+    if info is None:
         raise HTTPException(422, f"Modelo desconhecido: {model}")
-    if require_key and not _claude_configured():
-        raise HTTPException(409, "Configure a chave da Anthropic em Configurações (ou ANTHROPIC_API_KEY)")
+    if not info.vision:
+        raise HTTPException(422, f"{info.label} não aceita imagens; escolha um modelo com visão para a revisão")
+    if require_key and not ai.configured(us, info.provider):
+        raise HTTPException(409, f"Configure a chave do {ai.PROVIDERS[info.provider].label} em Configurações")
+    return us, info
+
+
+def _review_estimate(info, chars: int) -> dict:  # noqa: ANN001
+    from ..services import claude, review
+
+    prices = None if info.provider == "anthropic" else info.prices
+    return claude.estimate_review(info.ref, review.N_FRAMES, chars, prices, info.prices_as_of)
 
 
 @router.get("/projects/{pid}/review-estimate")
-def review_estimate(pid: int, model: str = "claude-opus-5-5", only_missing: bool = True,
+def review_estimate(pid: int, model: str = "", only_missing: bool = True,
                     session: Session = Depends(get_session)) -> dict:
-    """Custo estimado da revisão visual dos cortes renderizados (antes de confirmar)."""
-    from ..services import claude, review
+    """Custo estimado da revisão visual dos cortes renderizados (antes de confirmar). Sem `model` = o padrão."""
+    from ..services import ai
 
-    _check_model(model)
+    us, info = _check_model(model)
     _project(session, pid)
     clips = session.exec(select(Clip).where(Clip.project_id == pid, Clip.status != "discarded")).all()
     todo = [c for c in clips if _reviewable(c) and not (only_missing and _review_current(c))]
-    per = [claude.estimate_review(model, review.N_FRAMES, _speech_chars(c)) for c in todo]
-    return {"model": model, "clips": len(todo), "clip_ids": [c.id for c in todo],
-            "usd": round(sum(e["usd"] for e in per), 4), "per_clip_usd": [e["usd"] for e in per],
+    per = [_review_estimate(info, _speech_chars(c)) for c in todo]
+    priced = all(e["usd"] is not None for e in per)
+    return {"model": info.ref, "clips": len(todo), "clip_ids": [c.id for c in todo],
+            "usd": round(sum(e["usd"] for e in per), 4) if priced else None,
+            "per_clip_usd": [e["usd"] for e in per],
             "input_tokens": sum(e["input_tokens"] for e in per), "output_tokens": sum(e["output_tokens"] for e in per),
-            "prices_as_of": claude.PRICES_AS_OF, "configured": _claude_configured()}
+            "prices_as_of": info.prices_as_of, "configured": ai.configured(us, info.provider)}
 
 
 @router.get("/clips/{cid}/review-estimate")
-def clip_review_estimate(cid: int, model: str = "claude-opus-5-5", session: Session = Depends(get_session)) -> dict:
-    from ..services import claude, review
+def clip_review_estimate(cid: int, model: str = "", session: Session = Depends(get_session)) -> dict:
+    from ..services import ai
 
-    _check_model(model)
-    return {**claude.estimate_review(model, review.N_FRAMES, _speech_chars(_clip(session, cid))),
-            "configured": _claude_configured()}
+    us, info = _check_model(model)
+    return {**_review_estimate(info, _speech_chars(_clip(session, cid))), "configured": ai.configured(us, info.provider)}
 
 
 def _enqueue_review(session: Session, c: Clip, model: str) -> Job:
@@ -350,11 +357,11 @@ def _enqueue_review(session: Session, c: Clip, model: str) -> Job:
 
 @router.post("/clips/{cid}/review", response_model=Job)
 def review_clip(cid: int, body: ReviewRequest, session: Session = Depends(get_session)) -> Job:
-    _check_model(body.model, require_key=True)
+    _, info = _check_model(body.model, require_key=True)
     c = _clip(session, cid)
     if not _reviewable(c):
         raise HTTPException(409, "Renderize o corte antes de revisar")
-    return _enqueue_review(session, c, body.model)
+    return _enqueue_review(session, c, info.ref)
 
 
 @router.put("/clips/{cid}/review", response_model=Clip)
@@ -379,11 +386,11 @@ def submit_review(cid: int, body: ReviewSubmit, session: Session = Depends(get_s
 
 @router.post("/projects/{pid}/review", response_model=list[Job])
 def review_project(pid: int, body: ReviewRequest, session: Session = Depends(get_session)) -> list[Job]:
-    _check_model(body.model, require_key=True)
+    _, info = _check_model(body.model, require_key=True)
     _project(session, pid)
     clips = session.exec(select(Clip).where(Clip.project_id == pid, Clip.status != "discarded")
                          .order_by(col(Clip.score).desc())).all()
-    jobs = [_enqueue_review(session, c, body.model) for c in clips
+    jobs = [_enqueue_review(session, c, info.ref) for c in clips
             if _reviewable(c) and not (body.only_missing and _review_current(c))]
     if not jobs:
         raise HTTPException(409, "Nenhum corte renderizado para revisar (ou todos já revisados)")

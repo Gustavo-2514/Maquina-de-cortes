@@ -54,10 +54,11 @@ def estimate(project_dir: Path, duration: float, language: str, us: UserSettings
     return {"total_seconds": sum(s["seconds"] for s in stages), "stages": stages, "gpu": device == "cuda"}
 
 
-def estimate_claude(project_dir: Path, duration: float, num_clips: int, template_key: str) -> dict:
-    """Custo estimado da análise com cada modelo do Claude (US$). Usa a transcrição real quando já existe;
-    senão, uma média por segundo de vídeo (arredondada para cima)."""
-    from .services import claude
+def estimate_ai(project_dir: Path, duration: float, num_clips: int, template_key: str, us) -> dict:  # noqa: ANN001
+    """Custo estimado da análise com cada modelo pago (Claude + os adicionados nas Configurações), em US$.
+    Usa a transcrição real quando já existe; senão, uma média por segundo de vídeo (arredondada para cima).
+    Modelos sem preço configurado voltam com usd None (a UI mostra só os tokens)."""
+    from .services import ai, claude
     from .services.highlighter import build_messages, transcript_lines
     from .services.templates import get_template
 
@@ -77,6 +78,11 @@ def estimate_claude(project_dir: Path, duration: float, num_clips: int, template
     per_window, chars = claude.windows_cost_inputs(duration, num_clips, factor, len(windows), prompt_chars)
     if prompt_chars is not None:
         chars = prompt_chars  # já inclui as instruções de cada chamada
+    models = []
+    for m in ai.list_models(us):
+        prices = None if m.provider == "anthropic" else m.prices
+        models.append({**claude.estimate_analysis(m.ref, len(windows), per_window, chars, prices, m.prices_as_of),
+                       "label": m.label, "provider": m.provider, "provider_label": ai.PROVIDERS[m.provider].label,
+                       "configured": ai.configured(us, m.provider)})
     return {"from_transcript": prompt_chars is not None, "prices_as_of": claude.PRICES_AS_OF,
-            "models": [{**claude.estimate_analysis(m, len(windows), per_window, chars), "label": claude.MODEL_LABELS[m]}
-                       for m in claude.PRICES]}
+            "configured": any(x["configured"] for x in models), "models": models}

@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from starlette.concurrency import run_in_threadpool
 
 from ..config import UserSettings, get_settings, load_user_settings, save_user_settings
-from ..schemas import ClaudeTest, CleanupRequest, OllamaTest, PathRequest
+from ..schemas import AiKeyTest, ClaudeTest, CleanupRequest, OllamaTest, PathRequest
 from ..services import hardware
 
 router = APIRouter(prefix="/system", tags=["system"])
@@ -20,14 +20,22 @@ async def system_check() -> dict:
 MASK = "••••"
 
 
+def _mask(k: str) -> str:
+    return f"{MASK}{k[-4:]}" if k else ""
+
+
 def _masked(us: UserSettings) -> UserSettings:
-    """A chave da Anthropic nunca volta inteira para o navegador: só os 4 últimos caracteres."""
-    k = us.anthropic_api_key
-    return us.model_copy(update={"anthropic_api_key": f"{MASK}{k[-4:]}" if k else ""})
+    """Nenhuma chave de API volta inteira para o navegador: só os 4 últimos caracteres."""
+    return us.model_copy(update={"anthropic_api_key": _mask(us.anthropic_api_key),
+                                 "api_keys": {p: _mask(k) for p, k in us.api_keys.items() if k}})
 
 
-def _real_key(sent: str) -> str:
-    return load_user_settings().anthropic_api_key if sent.startswith(MASK) else sent.strip()
+def _real_key(sent: str, provider: str = "anthropic") -> str:
+    """Chave mascarada vinda do navegador = manter a salva."""
+    if not sent.startswith(MASK):
+        return sent.strip()
+    us = load_user_settings()
+    return us.anthropic_api_key if provider == "anthropic" else us.api_keys.get(provider, "")
 
 
 @router.get("/settings", response_model=UserSettings)
@@ -38,8 +46,66 @@ def get_user_settings() -> UserSettings:
 @router.put("/settings", response_model=UserSettings)
 def put_user_settings(body: UserSettings) -> UserSettings:
     body.anthropic_api_key = _real_key(body.anthropic_api_key)
+    body.api_keys = {p: k for p, v in body.api_keys.items() if (k := _real_key(v, p))}
     save_user_settings(body)
     return _masked(body)
+
+
+@router.get("/ai/providers")
+def ai_providers() -> dict:
+    from dataclasses import asdict
+
+    from ..services import ai
+
+    us = load_user_settings()
+    return {"providers": [{**asdict(p), "configured": ai.configured(us, p.key)} for p in ai.PROVIDERS.values()]}
+
+
+@router.get("/ai/models")
+def ai_models() -> dict:
+    """Todos os modelos pagos selecionáveis (Claude embutido + os adicionados), com preço e se há chave."""
+    from ..services import ai
+
+    us = load_user_settings()
+    return {"default_review": us.review_model, "models": [ai.model_dict(us, m) for m in ai.list_models(us)]}
+
+
+@router.get("/ai/catalog")
+def ai_catalog(provider: str) -> dict:
+    """Modelos que o provedor oferece (grátis: OpenRouter é público; os outros usam a chave salva em GET /models)."""
+    import httpx
+
+    from ..services import ai
+
+    if provider not in ai.PROVIDERS:
+        raise HTTPException(404, "Provedor desconhecido")
+    us = load_user_settings()
+    if provider not in ("openrouter", "anthropic"):
+        if not ai.base_url(us, provider):
+            raise HTTPException(409, "Informe e salve o endereço da API (base URL) do provedor")
+        if not ai.api_key(us, provider):
+            raise HTTPException(409, f"Salve a chave do {ai.PROVIDERS[provider].label} para listar os modelos")
+    try:
+        return {"provider": provider, "models": ai.catalog(us, provider)}
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(502, f"{ai.PROVIDERS[provider].label} respondeu {e.response.status_code}: "
+                                 f"{e.response.text[:300]}") from e
+    except httpx.HTTPError as e:
+        raise HTTPException(502, f"Sem conexão com {ai.PROVIDERS[provider].label}: {e}") from e
+
+
+@router.post("/ai/test")
+def ai_test(body: AiKeyTest) -> dict:
+    """Valida a chave de um provedor compatível com OpenAI sem gastar (lista modelos / consulta a chave)."""
+    from ..services import ai
+
+    if body.provider not in ai.PROVIDERS or body.provider == "anthropic":
+        raise HTTPException(422, "Provedor inválido (Claude: use /system/claude/test)")
+    us = load_user_settings()
+    if body.base_url.strip():
+        us = us.model_copy(update={"custom_base_url": body.base_url.strip()})
+    key = _real_key(body.api_key, body.provider) or ai.api_key(us, body.provider)
+    return ai.test_key(us, body.provider, key)
 
 
 @router.get("/claude/models")

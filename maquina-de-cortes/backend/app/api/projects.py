@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 from pathlib import Path
 
@@ -31,12 +30,14 @@ def _check_llm(opts: AnalysisOptions) -> None:
     """IA paga só com modelo conhecido e chave configurada (falha cedo, antes de enfileirar)."""
     if opts.llm == "ollama":
         return
-    from ..services import claude
+    from ..services import ai
 
-    if opts.llm not in claude.PRICES:
+    us = load_user_settings()
+    info = ai.resolve(us, opts.llm)
+    if info is None:
         raise HTTPException(422, f"IA desconhecida: {opts.llm}")
-    if not (load_user_settings().anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY")):
-        raise HTTPException(409, "Configure a chave da Anthropic em Configurações para analisar com o Claude")
+    if not ai.configured(us, info.provider):
+        raise HTTPException(409, f"Configure a chave do {ai.PROVIDERS[info.provider].label} em Configurações")
 
 
 def _err(e: ProjectError) -> HTTPException:
@@ -244,11 +245,9 @@ def get_estimate(pid: int, language: str = "pt", num_clips: int = 10, template: 
         raise HTTPException(409, "Duração do vídeo desconhecida")
     pdir = get_settings().project_dir(pid)
     us = load_user_settings()
-    from ..estimate import estimate_claude
+    from ..estimate import estimate_ai
 
-    return {**estimate(pdir, duration, language, us),
-            "claude": {**estimate_claude(pdir, duration, num_clips, template),
-                       "configured": bool(us.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY"))}}
+    return {**estimate(pdir, duration, language, us), "ai": estimate_ai(pdir, duration, num_clips, template, us)}
 
 
 @router.get("/projects/{pid}/files")

@@ -1,5 +1,7 @@
 """Claude (Anthropic API) como provedor OPCIONAL de IA — o padrão continua sendo o Ollama local.
 
+Os outros provedores pagos (OpenAI, Gemini, OpenRouter…) ficam em `openai_compat.py`; `ai.py` escolhe entre eles.
+
 Tudo aqui gasta dinheiro de verdade, então o módulo também:
 - estima o custo ANTES (`estimate_analysis`, `estimate_review`) para a UI mostrar e o usuário confirmar;
 - registra o custo REAL de cada chamada (`CostMeter`, a partir de `response.usage`).
@@ -59,24 +61,41 @@ def usd(model: str, input_tokens: float, output_tokens: float) -> float:
 # ---------------------------------------------------------------------------
 # Estimativas (antes de rodar)
 # ---------------------------------------------------------------------------
-def estimate_analysis(model: str, n_windows: int, per_window: int, prompt_chars: float) -> dict:
+Prices = tuple[float | None, float | None]
+
+
+def _usd_or_none(model: str, prices: Prices | None, input_tokens: float, output_tokens: float) -> float | None:
+    if prices is None:
+        return usd(model, input_tokens, output_tokens)
+    pin, pout = prices
+    if pin is None or pout is None:
+        return None
+    return (input_tokens * pin + output_tokens * pout) / 1_000_000
+
+
+def estimate_analysis(model: str, n_windows: int, per_window: int, prompt_chars: float,
+                      prices: Prices | None = None, prices_as_of: str | None = None) -> dict:
     """Custo estimado da análise: uma chamada por janela de transcrição.
 
+    `prices` = (entrada, saída) US$/1M de outro provedor; None = tabela do Claude. Preço desconhecido → usd None.
     `max_usd` cobre o pior caso (cada janela repetida 1× por JSON inválido)."""
     input_tokens = prompt_chars / CHARS_PER_TOKEN
     output_tokens = n_windows * (THINKING_TOKENS_PER_CALL + per_window * OUTPUT_TOKENS_PER_CLIP)
-    cost = usd(model, input_tokens, output_tokens)
+    cost = _usd_or_none(model, prices, input_tokens, output_tokens)
     return {"model": model, "calls": n_windows, "input_tokens": round(input_tokens),
-            "output_tokens": round(output_tokens), "usd": round(cost, 4), "max_usd": round(cost * 2, 4),
-            "prices_as_of": PRICES_AS_OF}
+            "output_tokens": round(output_tokens), "usd": None if cost is None else round(cost, 4),
+            "max_usd": None if cost is None else round(cost * 2, 4),
+            "prices_as_of": prices_as_of or PRICES_AS_OF}
 
 
-def estimate_review(model: str, n_frames: int, transcript_chars: int) -> dict:
+def estimate_review(model: str, n_frames: int, transcript_chars: int,
+                    prices: Prices | None = None, prices_as_of: str | None = None) -> dict:
     """Custo estimado da revisão visual de UM corte (n quadros + transcrição do corte)."""
     input_tokens = n_frames * IMAGE_TOKENS + transcript_chars / CHARS_PER_TOKEN + 900  # 900 = instruções
     output_tokens = THINKING_TOKENS_PER_CALL + 600
+    cost = _usd_or_none(model, prices, input_tokens, output_tokens)
     return {"model": model, "calls": 1, "input_tokens": round(input_tokens), "output_tokens": output_tokens,
-            "usd": round(usd(model, input_tokens, output_tokens), 4), "prices_as_of": PRICES_AS_OF}
+            "usd": None if cost is None else round(cost, 4), "prices_as_of": prices_as_of or PRICES_AS_OF}
 
 
 # ---------------------------------------------------------------------------
@@ -84,29 +103,47 @@ def estimate_review(model: str, n_frames: int, transcript_chars: int) -> dict:
 # ---------------------------------------------------------------------------
 @dataclass
 class CostMeter:
+    """Custo real somado das chamadas de um job. Serve a qualquer provedor (`provider` vai para o registro)."""
+
+    provider: str = "claude"
+    prices_as_of: str = PRICES_AS_OF
     calls: int = 0
     input_tokens: int = 0
     output_tokens: int = 0
     usd: float = 0.0
+    priced: bool = True  # False se alguma chamada não teve preço conhecido (o usd fica subestimado)
+    approx: bool = False  # True se o provedor não informou o uso e os tokens foram estimados pelo texto
     models: set[str] = field(default_factory=set)
     _lock: threading.Lock = field(default_factory=threading.Lock, repr=False)
 
-    def add(self, model: str, usage) -> None:  # noqa: ANN001  (BetaUsage do SDK)
+    def add(self, model: str, usage) -> None:  # noqa: ANN001  (BetaUsage do SDK da Anthropic)
         # cache_* não são usados aqui, mas entram na conta se aparecerem
         inp = (usage.input_tokens or 0) + (getattr(usage, "cache_read_input_tokens", 0) or 0) \
             + (getattr(usage, "cache_creation_input_tokens", 0) or 0)
         out = usage.output_tokens or 0
+        self.add_tokens(model, inp, out, usd(model, inp, out))
+
+    def add_tokens(self, model: str, inp: int, out: int, cost: float | None, approx: bool = False) -> None:
         with self._lock:
             self.calls += 1
             self.input_tokens += inp
             self.output_tokens += out
-            self.usd += usd(model, inp, out)
+            if cost is None:
+                self.priced = False
+            else:
+                self.usd += cost
+            self.approx = self.approx or approx
             self.models.add(model)
 
     def as_dict(self) -> dict:
-        return {"provider": "claude", "models": sorted(self.models), "calls": self.calls,
-                "input_tokens": self.input_tokens, "output_tokens": self.output_tokens,
-                "usd": round(self.usd, 4), "prices_as_of": PRICES_AS_OF}
+        d = {"provider": self.provider, "models": sorted(self.models), "calls": self.calls,
+             "input_tokens": self.input_tokens, "output_tokens": self.output_tokens,
+             "usd": round(self.usd, 4), "prices_as_of": self.prices_as_of}
+        if not self.priced:
+            d["priced"] = False
+        if self.approx:
+            d["approx"] = True
+        return d
 
 
 # ---------------------------------------------------------------------------
