@@ -98,6 +98,7 @@ export interface Project {
   detected_language: string
   word_count: number
   faces_ready: boolean
+  ai_cost_json: string
   created_at: string
   updated_at: string
 }
@@ -111,6 +112,8 @@ export interface AnalysisOptions {
   caption_style: string
   reframe_mode: 'auto' | 'speaker' | 'center' | 'blur_fit' | 'split' | 'gameplay'
   template: string
+  /** 'ollama' (local, grátis) ou o id de um modelo do Claude (pago) */
+  llm: string
 }
 
 export interface Template {
@@ -168,6 +171,7 @@ export interface Clip {
   export_json: string
   title_overlay: string
   post_json: string
+  review_json: string
   output_path: string
   error: string
   rendered_at: string | null
@@ -219,4 +223,50 @@ export interface CaptionStyle {
   position_y: number
   animation: 'highlight' | 'pop' | 'karaoke' | 'none'
   is_builtin: boolean
+}
+
+/** Custo real de uma chamada paga (Claude), medido pelo backend a partir do `usage` da API. */
+export interface AiCost {
+  provider: 'claude' | 'claude-code'
+  tokens_approx?: number
+  models: string[]
+  calls: number
+  input_tokens: number
+  output_tokens: number
+  usd: number
+  prices_as_of: string
+}
+
+/** Project.ai_cost_json */
+export interface ProjectAiCost {
+  analysis?: AiCost & { at: string }
+  reviews_usd?: number
+  total_usd?: number
+}
+
+export type ReviewVerdict = 'ok' | 'warn' | 'bad'
+
+/** Clip.review_json — revisão visual pelo Claude */
+export interface ClipReview {
+  verdict?: ReviewVerdict
+  summary?: string
+  issues?: { t: number; kind: string; severity: 'leve' | 'grave'; text: string }[]
+  model?: string
+  cost?: AiCost
+  at?: string
+  rendered_at?: string | null
+}
+
+/** Estimativa de custo (antes de rodar) */
+export interface CostEstimate {
+  model: string
+  label?: string
+  calls: number
+  input_tokens: number
+  output_tokens: number
+  usd: number
+  max_usd?: number
+  prices_as_of: string
+  /** há chave da Anthropic (Configurações ou ANTHROPIC_API_KEY) */
+  configured?: boolean
 }

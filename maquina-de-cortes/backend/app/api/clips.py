@@ -14,7 +14,7 @@ from ..db import get_session
 from ..models import CLIP_JOB_TYPES, CaptionStyle, Clip, Job, Project, now
 from ..project_ops import options_of
 from ..queue import active_job_for, enqueue
-from ..schemas import ApplyTemplate, CaptionStyleIn, CaptionStyleUpdate, ClipCreate, ClipUpdate, PostPackRequest, PostTexts
+from ..schemas import ApplyTemplate, CaptionStyleIn, CaptionStyleUpdate, ClipCreate, ClipUpdate, PostPackRequest, PostTexts, ReviewRequest, ReviewSubmit
 from ..services.highlighter import Words, first_sentence
 
 router = APIRouter(tags=["clips"])
@@ -107,7 +107,7 @@ def patch_clip(cid: int, body: ClipUpdate, session: Session = Depends(get_sessio
 @router.post("/clips/{cid}/duplicate", response_model=Clip)
 def duplicate_clip(cid: int, session: Session = Depends(get_session)) -> Clip:
     c = _clip(session, cid)
-    data = c.model_dump(exclude={"id", "created_at", "updated_at", "output_path", "status", "origin", "post_json"})
+    data = c.model_dump(exclude={"id", "created_at", "updated_at", "output_path", "status", "origin", "post_json", "review_json"})
     dup = Clip(**data, status="edited", origin="manual")
     dup.title = f"{c.title} (cópia)"[:200]
     session.add(dup)
@@ -275,6 +275,121 @@ def export_zip(pid: int, session: Session = Depends(get_session)) -> FileRespons
     postpack.build_zip(dest, items, p.name, skipped)
     return FileResponse(dest, media_type="application/zip", filename=f"{slugify(p.name, 60)}-cortes.zip",
                         background=BackgroundTask(dest.unlink, missing_ok=True))
+
+
+# --- Revisão visual pelo Claude (paga) --------------------------------------------------
+def _reviewable(c: Clip) -> bool:
+    return c.status == "rendered" and bool(c.output_path) and Path(c.output_path).is_file()
+
+
+def _review_current(c: Clip) -> bool:
+    """Já existe revisão para ESTE render (re-render invalida)."""
+    try:
+        r = json.loads(c.review_json or "{}")
+    except ValueError:
+        return False
+    return bool(r.get("verdict")) and r.get("rendered_at") == (c.rendered_at.isoformat() if c.rendered_at else None)
+
+
+def _speech_chars(c: Clip) -> int:
+    path = get_settings().project_dir(c.project_id) / "transcript.json"
+    if not path.exists():
+        return 0
+    words = Words.from_transcript(json.loads(path.read_text(encoding="utf-8"))).w
+    return sum(len(w["w"]) + 1 for w in words if w["s"] >= c.start_s - 0.05 and w["e"] <= c.end_s + 0.05) \
+        + 8 * max(1, len(words) // 12)
+
+
+def _claude_configured() -> bool:
+    import os
+
+    from ..config import load_user_settings
+
+    return bool(load_user_settings().anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY"))
+
+
+def _check_model(model: str, require_key: bool = False) -> None:
+    from ..services import claude
+
+    if model not in claude.PRICES:
+        raise HTTPException(422, f"Modelo desconhecido: {model}")
+    if require_key and not _claude_configured():
+        raise HTTPException(409, "Configure a chave da Anthropic em Configurações (ou ANTHROPIC_API_KEY)")
+
+
+@router.get("/projects/{pid}/review-estimate")
+def review_estimate(pid: int, model: str = "claude-opus-5-5", only_missing: bool = True,
+                    session: Session = Depends(get_session)) -> dict:
+    """Custo estimado da revisão visual dos cortes renderizados (antes de confirmar)."""
+    from ..services import claude, review
+
+    _check_model(model)
+    _project(session, pid)
+    clips = session.exec(select(Clip).where(Clip.project_id == pid, Clip.status != "discarded")).all()
+    todo = [c for c in clips if _reviewable(c) and not (only_missing and _review_current(c))]
+    per = [claude.estimate_review(model, review.N_FRAMES, _speech_chars(c)) for c in todo]
+    return {"model": model, "clips": len(todo), "clip_ids": [c.id for c in todo],
+            "usd": round(sum(e["usd"] for e in per), 4), "per_clip_usd": [e["usd"] for e in per],
+            "input_tokens": sum(e["input_tokens"] for e in per), "output_tokens": sum(e["output_tokens"] for e in per),
+            "prices_as_of": claude.PRICES_AS_OF, "configured": _claude_configured()}
+
+
+@router.get("/clips/{cid}/review-estimate")
+def clip_review_estimate(cid: int, model: str = "claude-opus-5-5", session: Session = Depends(get_session)) -> dict:
+    from ..services import claude, review
+
+    _check_model(model)
+    return {**claude.estimate_review(model, review.N_FRAMES, _speech_chars(_clip(session, cid))),
+            "configured": _claude_configured()}
+
+
+def _enqueue_review(session: Session, c: Clip, model: str) -> Job:
+    return active_job_for(session, "review", c.id) or enqueue(  # type: ignore[arg-type]
+        session, "review", c.id, params={"model": model})  # type: ignore[arg-type]
+
+
+@router.post("/clips/{cid}/review", response_model=Job)
+def review_clip(cid: int, body: ReviewRequest, session: Session = Depends(get_session)) -> Job:
+    _check_model(body.model, require_key=True)
+    c = _clip(session, cid)
+    if not _reviewable(c):
+        raise HTTPException(409, "Renderize o corte antes de revisar")
+    return _enqueue_review(session, c, body.model)
+
+
+@router.put("/clips/{cid}/review", response_model=Clip)
+def submit_review(cid: int, body: ReviewSubmit, session: Session = Depends(get_session)) -> Clip:
+    """Grava uma revisão feita pelo Claude Code (plano Pro do usuário) — sem custo na API, não entra em ai_cost_json."""
+    from ..services import review
+
+    c = _clip(session, cid)
+    if not _reviewable(c):
+        raise HTTPException(409, "Renderize o corte antes de revisar")
+    result = review.parse(json.dumps(body.model_dump()))
+    data = {**result, "model": body.model[:80], "at": now().isoformat(),
+            "cost": {"provider": "claude-code", "usd": 0, "tokens_approx": body.tokens_approx},
+            "rendered_at": c.rendered_at.isoformat() if c.rendered_at else None}
+    c.review_json = json.dumps(data, ensure_ascii=False)
+    c.updated_at = now()
+    session.add(c)
+    session.commit()
+    session.refresh(c)
+    return c
+
+
+@router.post("/projects/{pid}/review", response_model=list[Job])
+def review_project(pid: int, body: ReviewRequest, session: Session = Depends(get_session)) -> list[Job]:
+    _check_model(body.model, require_key=True)
+    _project(session, pid)
+    clips = session.exec(select(Clip).where(Clip.project_id == pid, Clip.status != "discarded")
+                         .order_by(col(Clip.score).desc())).all()
+    jobs = [_enqueue_review(session, c, body.model) for c in clips
+            if _reviewable(c) and not (body.only_missing and _review_current(c))]
+    if not jobs:
+        raise HTTPException(409, "Nenhum corte renderizado para revisar (ou todos já revisados)")
+    for j in jobs:
+        session.refresh(j)
+    return jobs
 
 
 # --- Estilos de legenda ------------------------------------------------------------

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError, post } from './client'
 import { downloadsKey } from './downloads'
-import type { AnalysisOptions, Download, Project, Transcript } from './types'
+import type { AnalysisOptions, CostEstimate, Download, Project, ProjectAiCost, Transcript } from './types'
 
 export const projectsKey = ['projects'] as const
 export const projectKey = (id: number) => ['project', id] as const
@@ -39,6 +39,7 @@ export const DEFAULT_ANALYSIS: AnalysisOptions = {
   caption_style: 'hormozi',
   reframe_mode: 'auto',
   template: 'geral',
+  llm: 'ollama',
 }
 
 export function parseOptions(p: Project): AnalysisOptions {
@@ -129,12 +130,16 @@ export interface Estimate {
   total_seconds: number
   gpu: boolean
   stages: { key: string; label: string; seconds: number; cached: boolean }[]
+  claude: { configured: boolean; from_transcript: boolean; prices_as_of: string; models: CostEstimate[] }
 }
 
-export const useEstimate = (id: number, language: string, enabled: boolean) =>
+export const useEstimate = (id: number, language: string, enabled: boolean, numClips = 10, template = 'geral') =>
   useQuery({
-    queryKey: ['estimate', id, language],
-    queryFn: () => api<Estimate>(`/projects/${id}/estimate?language=${encodeURIComponent(language)}`),
+    queryKey: ['estimate', id, language, numClips, template],
+    queryFn: () =>
+      api<Estimate>(
+        `/projects/${id}/estimate?${new URLSearchParams({ language, num_clips: String(numClips), template })}`,
+      ),
     enabled,
     retry: false,
     staleTime: 30_000,
@@ -156,4 +161,12 @@ export function usePrepareMedia(id: number) {
       qc.invalidateQueries({ queryKey: ['jobs'] })
     },
   })
+}
+
+export function parseAiCost(p: Project): ProjectAiCost {
+  try {
+    return JSON.parse(p.ai_cost_json || '{}') as ProjectAiCost
+  } catch {
+    return {}
+  }
 }

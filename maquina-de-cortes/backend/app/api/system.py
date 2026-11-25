@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException
 from starlette.concurrency import run_in_threadpool
 
 from ..config import UserSettings, get_settings, load_user_settings, save_user_settings
-from ..schemas import CleanupRequest, OllamaTest, PathRequest
+from ..schemas import ClaudeTest, CleanupRequest, OllamaTest, PathRequest
 from ..services import hardware
 
 router = APIRouter(prefix="/system", tags=["system"])
@@ -17,15 +17,54 @@ async def system_check() -> dict:
     return await run_in_threadpool(hardware.run_checks, get_settings().data_dir, us.ollama_url, us.ollama_model)
 
 
+MASK = "••••"
+
+
+def _masked(us: UserSettings) -> UserSettings:
+    """A chave da Anthropic nunca volta inteira para o navegador: só os 4 últimos caracteres."""
+    k = us.anthropic_api_key
+    return us.model_copy(update={"anthropic_api_key": f"{MASK}{k[-4:]}" if k else ""})
+
+
+def _real_key(sent: str) -> str:
+    return load_user_settings().anthropic_api_key if sent.startswith(MASK) else sent.strip()
+
+
 @router.get("/settings", response_model=UserSettings)
 def get_user_settings() -> UserSettings:
-    return load_user_settings()
+    return _masked(load_user_settings())
 
 
 @router.put("/settings", response_model=UserSettings)
 def put_user_settings(body: UserSettings) -> UserSettings:
+    body.anthropic_api_key = _real_key(body.anthropic_api_key)
     save_user_settings(body)
-    return body
+    return _masked(body)
+
+
+@router.get("/claude/models")
+def claude_models() -> dict:
+    from ..services import claude
+
+    return {"default": claude.DEFAULT_MODEL, "prices_as_of": claude.PRICES_AS_OF,
+            "models": [{"id": m, "label": claude.MODEL_LABELS[m], "input_per_mtok": p[0], "output_per_mtok": p[1]}
+                       for m, p in claude.PRICES.items()]}
+
+
+@router.post("/claude/test")
+def claude_test(body: ClaudeTest) -> dict:
+    """Pedido mínimo para validar a chave (custa uma fração de centavo — o valor real volta na resposta)."""
+    from ..services import claude
+    from ..services.highlighter import HighlightError
+
+    meter = claude.CostMeter()
+    try:
+        claude.create(claude.make_client(_real_key(body.api_key)), body.model, "Responda só o JSON pedido.",
+                      "Diga ok.", {"type": "object", "properties": {"ok": {"type": "boolean"}}}, meter,
+                      effort="low", max_tokens=1024)
+    except HighlightError as e:
+        return {"ok": False, "message": str(e), "detail": e.detail}
+    return {"ok": True, "message": f"Chave válida ({body.model}).", "cost": meter.as_dict()}
 
 
 @router.get("/ytdlp")

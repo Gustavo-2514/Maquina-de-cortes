@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 
@@ -24,6 +25,18 @@ def _get(session: Session, pid: int) -> Project:
     if p is None:
         raise HTTPException(404, "Projeto não encontrado")
     return p
+
+
+def _check_llm(opts: AnalysisOptions) -> None:
+    """IA paga só com modelo conhecido e chave configurada (falha cedo, antes de enfileirar)."""
+    if opts.llm == "ollama":
+        return
+    from ..services import claude
+
+    if opts.llm not in claude.PRICES:
+        raise HTTPException(422, f"IA desconhecida: {opts.llm}")
+    if not (load_user_settings().anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY")):
+        raise HTTPException(409, "Configure a chave da Anthropic em Configurações para analisar com o Claude")
 
 
 def _err(e: ProjectError) -> HTTPException:
@@ -64,6 +77,7 @@ def create(body: ProjectCreate, session: Session = Depends(get_session)) -> Proj
         else:
             raise HTTPException(422, "Informe download_id ou local_path (ou use /projects/upload)")
         if body.analyze:
+            _check_llm(body.analyze)
             start_analysis(session, p, body.analyze)
     except ProjectError as e:
         raise _err(e) from e
@@ -148,6 +162,7 @@ def delete(pid: int, session: Session = Depends(get_session)) -> dict:
 def analyze(pid: int, body: AnalysisOptions, session: Session = Depends(get_session)) -> Project:
     if body.min_s >= body.max_s:
         raise HTTPException(422, "A duração mínima precisa ser menor que a máxima")
+    _check_llm(body)
     p = _get(session, pid)
     if not p.source_path:
         raise HTTPException(409, "O upload deste projeto não terminou")
@@ -213,8 +228,9 @@ def thumbs(pid: int, session: Session = Depends(get_session)) -> dict:
 
 
 @router.get("/projects/{pid}/estimate")
-def get_estimate(pid: int, language: str = "pt", session: Session = Depends(get_session)) -> dict:
-    """Tempo estimado da análise (o que já está em cache conta como 0)."""
+def get_estimate(pid: int, language: str = "pt", num_clips: int = 10, template: str = "geral",
+                 session: Session = Depends(get_session)) -> dict:
+    """Tempo estimado da análise (o que já está em cache conta como 0) + custo se usar o Claude."""
     p = _get(session, pid)
     duration = p.duration_s
     if not duration and p.source_path:
@@ -226,7 +242,13 @@ def get_estimate(pid: int, language: str = "pt", session: Session = Depends(get_
             duration = None
     if not duration:
         raise HTTPException(409, "Duração do vídeo desconhecida")
-    return estimate(get_settings().project_dir(pid), duration, language, load_user_settings())
+    pdir = get_settings().project_dir(pid)
+    us = load_user_settings()
+    from ..estimate import estimate_claude
+
+    return {**estimate(pdir, duration, language, us),
+            "claude": {**estimate_claude(pdir, duration, num_clips, template),
+                       "configured": bool(us.anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY"))}}
 
 
 @router.get("/projects/{pid}/files")

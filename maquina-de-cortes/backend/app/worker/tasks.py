@@ -399,7 +399,16 @@ def handle_analyze(ctx: JobContext) -> None:
             pct = 100 * (state["win"] + frac) / state["n"]
             ctx.report(pct, f"IA lendo o trecho {state['win'] + 1} de {state['n']}…")
 
-        llm = highlighter.ollama_chat(us.ollama_url, us.ollama_model, ctx.is_canceled, on_chunk)
+        meter = None
+        if opts.llm != "ollama":  # Claude (pago): custo real medido em cada chamada
+            from ..services import claude
+
+            if opts.llm not in claude.PRICES:
+                raise RuntimeError(f"Modelo de IA desconhecido: {opts.llm}")
+            meter = claude.CostMeter()
+            llm = claude.claude_chat(us.anthropic_api_key, opts.llm, meter, ctx.is_canceled, on_chunk)
+        else:
+            llm = highlighter.ollama_chat(us.ollama_url, us.ollama_model, ctx.is_canceled, on_chunk)
         try:
             template = get_template(opts.template)
             clips = highlighter.find_highlights(
@@ -408,6 +417,9 @@ def handle_analyze(ctx: JobContext) -> None:
             )
         except highlighter.Canceled:
             raise JobCanceled() from None
+        finally:
+            if meter is not None and meter.calls:
+                _add_ai_cost(ctx.ref_id, "analysis", meter.as_dict())
 
         with Session(engine) as s:
             # reanálise: substitui sugestões da IA; mantém cortes editados, renderizados e manuais
@@ -423,7 +435,28 @@ def handle_analyze(ctx: JobContext) -> None:
             s.commit()
 
     _update_project(ctx.ref_id, status="ready", stage="done", progress=100)
-    ctx.report(100, f"{len(clips)} corte(s) sugerido(s)", force=True)
+    cost = f" · Claude: US$ {meter.usd:.2f}".replace(".", ",") if meter is not None else ""
+    ctx.report(100, f"{len(clips)} corte(s) sugerido(s){cost}", force=True)
+
+
+def _add_ai_cost(project_id: int, kind: str, cost: dict) -> None:
+    """Acumula o custo real da IA paga no projeto (análise = última; revisões somam)."""
+    with Session(engine) as s:
+        p = s.get(Project, project_id)
+        if p is None:
+            return
+        try:
+            data = json.loads(p.ai_cost_json or "{}")
+        except ValueError:
+            data = {}
+        if kind == "analysis":
+            data["analysis"] = {**cost, "at": now().isoformat()}
+        else:
+            data["reviews_usd"] = round(data.get("reviews_usd", 0) + cost["usd"], 4)
+        data["total_usd"] = round(data.get("total_usd", 0) + cost["usd"], 4)
+        p.ai_cost_json = json.dumps(data, ensure_ascii=False)
+        s.add(p)
+        s.commit()
 
 
 # ---------------------------------------------------------------------------
@@ -791,8 +824,53 @@ def handle_post_pack(ctx: JobContext) -> None:
     ctx.report(100, "Pacote pronto", force=True)
 
 
+def handle_review(ctx: JobContext) -> None:
+    """Revisão visual do MP4 final pelo Claude (pago). params: {"model": str}."""
+    from ..services import claude, review
+
+    with Session(engine) as s:
+        clip = s.get(Clip, ctx.ref_id)
+        if clip is None:
+            raise RuntimeError("Corte não existe mais.")
+        job = s.get(Job, ctx.job_id)
+        s.expunge(clip)
+        params = json.loads(job.params_json or "{}") if job else {}
+    model = params.get("model") or claude.DEFAULT_MODEL
+    if model not in claude.PRICES:
+        raise RuntimeError(f"Modelo desconhecido: {model}")
+    mp4 = Path(clip.output_path) if clip.output_path else None
+    if not mp4 or not mp4.is_file() or clip.status != "rendered":
+        raise RuntimeError("Renderize o corte antes de revisar.")
+    pdir = get_settings().project_dir(clip.project_id)
+    duration = clip.end_s - clip.start_s
+    ctx.report(5, "Extraindo quadros…", force=True)
+    frames = review.extract_frames(mp4, duration, pdir / "clips" / str(clip.id) / "review",
+                                   register_process=ctx.register_process, is_canceled=ctx.is_canceled)
+    tp = pdir / "transcript.json"
+    transcript = json.loads(tp.read_text(encoding="utf-8")) if tp.exists() else {"segments": []}
+    all_words = [w for seg in transcript["segments"] for w in seg["words"]]
+    words = captions.clip_words(all_words, clip.start_s, clip.end_s,
+                                captions.parse_overrides(clip.caption_overrides_json).words)
+    ctx.report(30, f"Claude revisando {len(frames)} quadros…", force=True)
+    us = load_user_settings()
+    try:
+        result, cost = review.review(us.anthropic_api_key, model, frames, review.speech_lines(words), clip.title,
+                                     duration, ctx.is_canceled)
+    except highlighter.Canceled:
+        raise JobCanceled() from None
+    except highlighter.HighlightError as e:
+        raise RuntimeError(f"{e} {e.detail}".strip()) from e
+    _add_ai_cost(clip.project_id, "review", cost)
+    data = {**result, "model": model, "cost": cost, "at": now().isoformat(),
+            "rendered_at": clip.rendered_at.isoformat() if clip.rendered_at else None}
+    _update_clip(clip.id, review_json=json.dumps(data, ensure_ascii=False))  # type: ignore[arg-type]
+    label = {"ok": "pode postar", "warn": "vale ajustar", "bad": "precisa corrigir"}[result["verdict"]]
+    ctx.report(100, f"Revisão: {label} · US$ {cost['usd']:.3f}".replace(".", ","), force=True)
+
+
 HANDLERS: dict[str, Callable[[JobContext], None]] = {
     "post_pack": handle_post_pack,
+    "review": handle_review,
     "download": handle_download,
     "probe_proxy": handle_probe_proxy,
     "transcribe": handle_transcribe,

@@ -79,6 +79,8 @@ class Project(SQLModel, table=True):
     detected_language: str = ""
     word_count: int = 0
     faces_ready: bool = False  # cenas + rostos analisados (reenquadramento automático)
+    # custo da IA paga (Claude): {"analysis": {...última}, "reviews_usd": x, "total_usd": y}
+    ai_cost_json: str = "{}"
     prepare_only: bool = False  # job atual só restaura arquivos limpos (não refaz transcrição/análise)
     created_at: datetime = Field(default_factory=now)
     updated_at: datetime = Field(default_factory=now, index=True)
@@ -106,6 +108,8 @@ class Clip(SQLModel, table=True):
     # pacote para postar: {"tiktok": {caption, hashtags}, "reels": {...}, "shorts": {title, description, hashtags},
     #  "texts_at", "model", "cover_t", "cover_at"} — capas em data/projects/<id>/clips/<cid>/cover*.jpg
     post_json: str = "{}"
+    # revisão visual pelo Claude: {"verdict": "ok"|"warn"|"bad", "summary", "issues": [...], "cost": {...}, "at"}
+    review_json: str = "{}"
     output_path: str = ""
     error: str = ""
     rendered_at: datetime | None = None
@@ -137,4 +141,4 @@ class CaptionStyle(SQLModel, table=True):
 # "reframe" (cenas + rostos) roda na CPU: fica no slot leve, em paralelo com a transcrição na GPU
 # post_pack usa o Ollama (VRAM) → slot pesado, um por vez
 GPU_JOB_TYPES = {"transcribe", "analyze", "render", "post_pack"}
-CLIP_JOB_TYPES = {"render", "post_pack"}  # ref_id = id do corte
+CLIP_JOB_TYPES = {"render", "post_pack", "review"}  # review = Claude pela internet (slot leve)  # ref_id = id do corte

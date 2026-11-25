@@ -290,3 +290,28 @@ Registro de escolhas onde a especificação era ambígua ou o ambiente exigiu ad
   `textos.csv` tem BOM UTF-8 para o Excel abrir os acentos certo.
 
 
+## Claude como IA opcional e paga (roadmap #19 e #20, 2026-11-25)
+
+- **Opt-in por ação, nunca padrão**: a análise escolhe `AnalysisOptions.llm` = `"ollama"` (padrão) ou um model id do
+  Claude; a revisão visual é um botão próprio. Sem chave (Configurações ou `ANTHROPIC_API_KEY`), a API recusa com 409
+  antes de enfileirar. A chave fica em `data/settings.json` e o `GET /system/settings` devolve só `••••` + 4 últimos.
+- **Custo antes e depois**: `services/claude.py` tem a tabela de preços (US$/1M tokens, conferida em 2026-11-03) e
+  estima o custo antes (`/projects/{id}/estimate` → `claude.models[]`; `/projects/{id}/review-estimate`). A UI mostra o
+  valor no seletor e no botão ("Analisar · ≈ US$ 0,73"). O custo real vem do `usage` de cada resposta (`CostMeter`) e
+  fica em `Project.ai_cost_json` (última análise + soma das revisões + total) e em `Clip.review_json.cost`.
+  Heurística da estimativa: ~30 caracteres de prompt por segundo de vídeo (medido 19–23 em gameplay) ÷ 3 caracteres por
+  token, + 2.500 tokens de raciocínio por chamada (esforço `medium`); "pior caso" = ×2 (repetição por JSON inválido).
+  Ex.: 1 h de gameplay, 10 cortes → Opus ≈ US$ 0,73, Sonnet ≈ 0,37, Haiku ≈ 0,02.
+- **Mesmo contrato do Ollama**: `claude_chat` devolve um `LLMCall` igual ao `ollama_chat`, então `find_highlights` não
+  mudou. Saída garantida por structured outputs (`output_config.format`) — o schema é convertido (`strict_schema`:
+  `additionalProperties: false`, sem `minimum/maximum`; o clamp das notas continua no parse). Temperatura é ignorada
+  (os modelos atuais não aceitam). Streaming para poder cancelar. Opus/Sonnet com `fallbacks: "default"` (beta
+  `server-side-fallback-2026-07-01`) para o caso de recusa; Haiku não tem.
+- **Revisão visual** (job `review`, slot leve — é rede, não GPU): 8 quadros do MP4 final (405×720, ≈390 tokens cada) +
+  fala do corte → `{verdict ok|warn|bad, summary, issues[{t, kind, severity, text}]}`. Guarda `rendered_at` do MP4
+  revisado: re-render invalida o selo (a UI avisa). Ex.: Opus ≈ US$ 0,09 por corte, Sonnet ≈ 0,04, Haiku ≈ 0,002.
+- Os textos do pacote para postar continuam no Ollama (local).
+- **Revisão pelo plano Pro (sem chave da API)**: a assinatura Pro não dá acesso à API e outros apps não podem usar o
+  login dela, então a revisão também pode ser feita pelo Claude Code (skill `/cortes`: `quadros <cid>` extrai os mesmos
+  8 quadros + fala; `salvar-revisao` grava via `PUT /clips/{id}/review`). Fica com `cost.provider = "claude-code"`,
+  `usd = 0` e uso aproximado do plano em `tokens_approx`; não entra em `Project.ai_cost_json`.

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, post } from './client'
+import type { AiCost } from './types'
 
 export interface CheckItem {
   key: string
@@ -39,6 +40,9 @@ export interface UserSettings {
   default_language: string
   cookies_path: string
   normalize_audio: boolean
+  /** mascarada (••••1234) quando vem do servidor; enviar mascarada = manter a salva */
+  anthropic_api_key: string
+  claude_model: string
 }
 
 export const useUserSettings = () =>
@@ -100,3 +104,27 @@ export function useCleanup() {
     },
   })
 }
+
+export interface ClaudeModel {
+  id: string
+  label: string
+  input_per_mtok: number
+  output_per_mtok: number
+}
+
+/** Lista local usada enquanto o backend não responde (ex.: app antigo ainda rodando). Preços: só os do backend. */
+export const CLAUDE_MODELS_FALLBACK: ClaudeModel[] = [
+  { id: 'claude-opus-5-5', label: 'Claude Opus 5.5 (melhor qualidade)', input_per_mtok: 0, output_per_mtok: 0 },
+  { id: 'claude-sonnet-5-5', label: 'Claude Sonnet 5.5 (equilíbrio)', input_per_mtok: 0, output_per_mtok: 0 },
+  { id: 'claude-haiku-5-5', label: 'Claude Haiku 5.5 (mais barato)', input_per_mtok: 0, output_per_mtok: 0 },
+]
+
+export const useClaudeModels = () =>
+  useQuery({
+    queryKey: ['system', 'claude-models'],
+    queryFn: () => api<{ default: string; prices_as_of: string; models: ClaudeModel[] }>('/system/claude/models'),
+    staleTime: Infinity,
+  })
+
+export const testClaude = (api_key: string, model: string) =>
+  post<{ ok: boolean; message: string; detail?: string; cost?: AiCost }>('/system/claude/test', { api_key, model })

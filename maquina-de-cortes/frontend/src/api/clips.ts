@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, post } from './client'
 import { jobsKey, upsertJob } from './jobs'
-import type { Clip, Job, Platform, PostPack, ScoreBreakdown, Template } from './types'
+import type { Clip, ClipReview, CostEstimate, Job, Platform, PostPack, ScoreBreakdown, Template } from './types'
 
 export const clipsKey = (projectId: number) => ['clips', projectId] as const
 
@@ -55,6 +55,14 @@ export function useClipActions(projectId: number) {
     }),
     postPackAll: useMutation({
       mutationFn: () => post<Job[]>(`/projects/${projectId}/post-pack`, { only_missing: true }),
+      onSuccess: (js) => qc.setQueryData<Job[]>(jobsKey, (old) => js.reduce((acc, j) => upsertJob(acc, j), old ?? [])),
+    }),
+    review: useMutation({
+      mutationFn: ({ id, model }: { id: number; model: string }) => post<Job>(`/clips/${id}/review`, { model }),
+      onSuccess: (j) => qc.setQueryData<Job[]>(jobsKey, (old) => upsertJob(old, j)),
+    }),
+    reviewAll: useMutation({
+      mutationFn: (model: string) => post<Job[]>(`/projects/${projectId}/review`, { model, only_missing: true }),
       onSuccess: (js) => qc.setQueryData<Job[]>(jobsKey, (old) => js.reduce((acc, j) => upsertJob(acc, j), old ?? [])),
     }),
     savePost: useMutation({
@@ -140,3 +148,36 @@ export const REFRAME_LABELS: Record<Clip['reframe_mode'], string> = {
   gameplay: 'Webcam + jogo',
   manual: 'Manual',
 }
+
+export function parseReview(c: Clip): ClipReview {
+  try {
+    return JSON.parse(c.review_json || '{}') as ClipReview
+  } catch {
+    return {}
+  }
+}
+
+/** A revisão vale para o MP4 atual? (re-render invalida) */
+export const reviewIsCurrent = (c: Clip, r: ClipReview = parseReview(c)) => !!r.verdict && r.rendered_at === c.rendered_at
+
+export interface ProjectReviewEstimate extends CostEstimate {
+  clips: number
+  clip_ids: number[]
+  per_clip_usd: number[]
+}
+
+export const useReviewEstimate = (projectId: number, model: string, enabled: boolean) =>
+  useQuery({
+    queryKey: ['review-estimate', projectId, model],
+    queryFn: () => api<ProjectReviewEstimate>(`/projects/${projectId}/review-estimate?model=${encodeURIComponent(model)}`),
+    enabled,
+    retry: false,
+  })
+
+export const useClipReviewEstimate = (clipId: number, model: string, enabled: boolean) =>
+  useQuery({
+    queryKey: ['clip-review-estimate', clipId, model],
+    queryFn: () => api<CostEstimate>(`/clips/${clipId}/review-estimate?model=${encodeURIComponent(model)}`),
+    enabled,
+    retry: false,
+  })

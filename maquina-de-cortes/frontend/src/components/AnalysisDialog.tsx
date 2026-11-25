@@ -1,4 +1,4 @@
-import { Clock, Loader2, Sparkles } from 'lucide-react'
+import { CircleDollarSign, Clock, Loader2, Sparkles } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
@@ -6,7 +6,9 @@ import { Dialog } from '@/components/ui/dialog'
 import { Input, NativeSelect, Textarea } from '@/components/ui/input'
 import { useCaptionStyles } from '@/api/editor'
 import { TemplatePicker } from '@/components/TemplatePicker'
-import { parseOptions, useEstimate, useProjectActions } from '@/api/projects'
+import { parseAiCost, parseOptions, useEstimate, useProjectActions } from '@/api/projects'
+import { useUserSettings } from '@/api/system'
+import { formatTokens, formatUsd } from '@/lib/format'
 import type { AnalysisOptions, Project } from '@/api/types'
 import { LANGUAGES } from '@/lib/languages'
 
@@ -30,10 +32,14 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 export function AnalysisDialog({ project, open, onClose }: { project: Project; open: boolean; onClose: () => void }) {
   const [opts, setOpts] = useState<AnalysisOptions>(() => parseOptions(project))
   const { analyze } = useProjectActions()
-  const { data: est } = useEstimate(project.id, opts.language, open)
+  const { data: est } = useEstimate(project.id, opts.language, open, opts.num_clips, opts.template)
+  const { data: settings } = useUserSettings()
+  const paid = opts.llm !== 'ollama'
+  const cost = paid ? est?.claude.models.find((m) => m.model === opts.llm) : undefined
+  const lastCost = parseAiCost(project).analysis
   const { data: styles } = useCaptionStyles()
   const set = <K extends keyof AnalysisOptions>(k: K, v: AnalysisOptions[K]) => setOpts((o) => ({ ...o, [k]: v }))
-  const invalid = opts.min_s >= opts.max_s
+  const invalid = opts.min_s >= opts.max_s || (paid && !est?.claude.configured)
 
   const submit = () =>
     analyze.mutate(
@@ -99,6 +105,42 @@ export function AnalysisDialog({ project, open, onClose }: { project: Project; o
             ))}
           </NativeSelect>
         </Field>
+        <Field
+          label="IA que escolhe os cortes"
+          hint={
+            paid
+              ? 'Paga: usa a sua chave da Anthropic. O custo real aparece na Fila e no projeto ao terminar.'
+              : 'Roda no seu computador, sem custo.'
+          }
+        >
+          <NativeSelect value={opts.llm} onChange={(e) => set('llm', e.target.value)}>
+            <option value="ollama">Local — {settings?.ollama_model ?? 'Ollama'} (grátis)</option>
+            {est?.claude.models.map((m) => (
+              <option key={m.model} value={m.model} disabled={!est.claude.configured}>
+                {m.label} · ≈ {formatUsd(m.usd)}
+                {!est.claude.configured && ' (configure a chave em Configurações)'}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
+        {paid && cost && (
+          <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-xs">
+            <div className="mb-1 flex items-center gap-1.5 text-sm font-medium">
+              <CircleDollarSign className="size-4" /> Custo estimado: ≈ {formatUsd(cost.usd)}
+              {cost.max_usd != null && <span className="font-normal text-muted-foreground">(até {formatUsd(cost.max_usd)} se precisar repetir)</span>}
+            </div>
+            <p className="text-muted-foreground">
+              {cost.calls} chamada(s) · ~{formatTokens(cost.input_tokens)} tokens de entrada · ~{formatTokens(cost.output_tokens)} de saída
+              (inclui o raciocínio). {est?.claude.from_transcript ? 'Calculado pela transcrição.' : 'Estimado pela duração — a transcrição ainda não existe.'}{' '}
+              Preços de tabela de {cost.prices_as_of}; a fatura da Anthropic é a referência final.
+            </p>
+          </div>
+        )}
+        {lastCost && (
+          <p className="text-xs text-muted-foreground">
+            Última análise com Claude neste projeto custou {formatUsd(lastCost.usd)} ({lastCost.models.join(', ')}).
+          </p>
+        )}
         <Field label="Instruções extras para a IA" hint="Ex.: foque nas partes engraçadas; evite falar de patrocinadores.">
           <Textarea value={opts.extra_prompt} onChange={(e) => set('extra_prompt', e.target.value)} rows={3} maxLength={2000} />
         </Field>
@@ -119,7 +161,7 @@ export function AnalysisDialog({ project, open, onClose }: { project: Project; o
           </div>
         )}
         <p className="rounded-md bg-muted/60 p-3 text-xs text-muted-foreground">
-          Etapas: preparar o vídeo → transcrever (Whisper) → a IA local escolhe os trechos e dá nota. Etapas já feitas são
+          Etapas: preparar o vídeo → transcrever (Whisper) → a IA {paid ? 'escolhida (Claude, pela internet)' : 'local'} escolhe os trechos e dá nota. Etapas já feitas são
           reaproveitadas. Reanalisar substitui as sugestões da IA, mas mantém cortes editados e manuais.
         </p>
         <div className="flex justify-end gap-2">
@@ -128,7 +170,7 @@ export function AnalysisDialog({ project, open, onClose }: { project: Project; o
           </Button>
           <Button onClick={submit} disabled={invalid || analyze.isPending}>
             {analyze.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
-            Analisar
+            {paid && cost ? `Analisar · ≈ ${formatUsd(cost.usd)}` : 'Analisar'}
           </Button>
         </div>
       </div>

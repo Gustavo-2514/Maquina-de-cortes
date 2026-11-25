@@ -55,4 +55,16 @@ export const JOB_TYPE_LABELS: Record<string, string> = {
   reframe: 'Análise de rostos',
   render: 'Render',
   post_pack: 'Pacote para postar',
+  review: 'Revisão (Claude)',
 }
+
+/** Dólares para custos de IA paga: centavos com 2 casas; frações de centavo com 3–4. */
+export function formatUsd(v: number | null | undefined): string {
+  if (v == null) return '—'
+  if (v === 0) return 'US$ 0'
+  if (v < 0.0001) return '< US$ 0,0001'
+  const digits = v >= 0.1 ? 2 : v >= 0.01 ? 3 : 4
+  return `US$ ${v.toFixed(digits).replace('.', ',')}`
+}
+
+export const formatTokens = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1).replace('.', ',')} mil` : String(n))

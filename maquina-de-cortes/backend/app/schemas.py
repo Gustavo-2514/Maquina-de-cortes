@@ -41,6 +41,7 @@ class AnalysisOptions(BaseModel):
     caption_style: str = "hormozi"
     reframe_mode: Literal["auto", "speaker", "center", "blur_fit", "split", "gameplay"] = "auto"
     template: str = "geral"  # geral | gameplay | podcast | debate (services/templates.py)
+    llm: str = "ollama"  # "ollama" (local, grátis) ou um model id do Claude (pago — services/claude.py)
 
 
 class ProjectCreate(BaseModel):
@@ -141,3 +142,25 @@ class PostTexts(BaseModel):
     tiktok: dict = Field(default_factory=dict)
     reels: dict = Field(default_factory=dict)
     shorts: dict = Field(default_factory=dict)
+
+
+class ClaudeTest(BaseModel):
+    api_key: str = ""  # vazio/mascarado = a chave salva
+    model: str = "claude-haiku-5-5"
+
+
+class ReviewSubmit(BaseModel):
+    """Revisão feita fora do app (Claude Code no plano Pro): mesmo formato do job `review`."""
+
+    verdict: str
+    summary: str = ""
+    issues: list[dict] = Field(default_factory=list)
+    model: str = "Claude Code (plano Pro)"
+    tokens_approx: int = 0  # estimativa de uso do plano (não é cobrado em US$)
+
+
+class ReviewRequest(BaseModel):
+    """Revisão visual pelo Claude (paga). No projeto, `only_missing` pula cortes já revisados neste render."""
+
+    model: str = "claude-opus-5-5"
+    only_missing: bool = True

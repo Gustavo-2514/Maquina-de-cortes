@@ -1,4 +1,4 @@
-import { AlertTriangle, ArchiveRestore, Ban, ChevronDown, Copy, Download, Film, FolderOpen, Loader2, Package, Pause, Pencil, Play, Plus, Scissors, Send, Trash2, X } from 'lucide-react'
+import { AlertTriangle, ArchiveRestore, Ban, ChevronDown, Copy, Download, Film, FolderOpen, Loader2, Package, Pause, Pencil, Play, Plus, Scissors, Send, ShieldCheck, Trash2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -9,13 +9,14 @@ import { Dialog } from '@/components/ui/dialog'
 import { Input, NativeSelect, Progress } from '@/components/ui/input'
 import { clipFileUrl, clipPreviewUrl, exportZipUrl, parseBreakdown, REFRAME_LABELS, useApplyTemplate, useClipActions, useClips } from '@/api/clips'
 import { PostPackBadge, PostPackPanel } from '@/components/PostPackPanel'
-import { parseOptions, useProject } from '@/api/projects'
+import { ReviewBadge, ReviewDetails, ReviewDialog } from '@/components/ReviewPanel'
+import { parseAiCost, parseOptions, useProject } from '@/api/projects'
 import { TemplatePicker } from '@/components/TemplatePicker'
 import { openFolder } from '@/api/downloads'
 import { useJobActions, useJobs } from '@/api/jobs'
 import type { Clip, Job } from '@/api/types'
 import { formatTime, parseTime, scoreVariant } from '@/lib/clip'
-import { formatDuration } from '@/lib/format'
+import { formatDuration, formatUsd } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 function ScoreBadge({ c }: { c: Clip }) {
@@ -140,6 +141,8 @@ function ClipRow({
   job,
   postJob,
   postError,
+  reviewJob,
+  reviewError,
   onWatch,
 }: {
   c: Clip
@@ -149,9 +152,12 @@ function ClipRow({
   job: Job | undefined
   postJob: Job | undefined
   postError: string
+  reviewJob: Job | undefined
+  reviewError: string
   onWatch: (c: Clip) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [reviewOpen, setReviewOpen] = useState(false)
   const [postOpen, setPostOpen] = useState(false)
   const { update, duplicate, remove, render } = useClipActions(c.project_id)
   const discarded = c.status === 'discarded'
@@ -167,6 +173,7 @@ function ClipRow({
               <span className={cn('truncate font-medium', discarded && 'line-through')}>{c.title || 'Sem título'}</span>
               {c.status === 'edited' && c.origin === 'ai' && <Badge variant="secondary">editado</Badge>}
               <PostPackBadge c={c} />
+              <ReviewBadge c={c} />
             </div>
             <div className="mt-0.5 text-xs text-muted-foreground tabular-nums">
               {formatTime(c.start_s)} → {formatTime(c.end_s)} · {formatDuration(c.end_s - c.start_s)}
@@ -232,6 +239,15 @@ function ClipRow({
             >
               {postJob ? <Loader2 className="animate-spin" /> : <Send />} Postar
             </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={discarded || c.status !== 'rendered' || !!reviewJob}
+              onClick={() => setReviewOpen(true)}
+              title={c.status === 'rendered' ? 'O Claude confere o MP4 final (pago — mostra o custo antes)' : 'Renderize o corte primeiro'}
+            >
+              {reviewJob ? <Loader2 className="animate-spin" /> : <ShieldCheck />} Revisar
+            </Button>
             <Button size="sm" variant="ghost" onClick={() => duplicate.mutate(c.id, { onError, onSuccess: () => toast.success('Corte duplicado') })}>
               <Copy /> Duplicar
             </Button>
@@ -257,7 +273,9 @@ function ClipRow({
           </div>
 
           {!discarded && <RenderStatus c={c} job={job} onWatch={onWatch} />}
+          {!discarded && <ReviewDetails c={c} job={reviewJob} error={reviewError} />}
           {!discarded && postOpen && <PostPackPanel c={c} job={postJob} lastError={postError} />}
+          {reviewOpen && <ReviewDialog projectId={c.project_id} clip={c} onClose={() => setReviewOpen(false)} />}
 
           {open && (
             <div className="mt-2 space-y-3 rounded-lg bg-muted/40 p-3 text-sm">
@@ -425,20 +443,34 @@ export function ClipsPanel({
   const [manualOpen, setManualOpen] = useState(false)
   const [watching, setWatching] = useState<Clip | null>(null)
   const [renderAllOpen, setRenderAllOpen] = useState(false)
+  const [reviewAllOpen, setReviewAllOpen] = useState(false)
+  const { data: project } = useProject(projectId)
+  const aiCost = project ? parseAiCost(project) : {}
   const navigate = useNavigate()
   const { data: jobs } = useJobs()
   const { postPackAll } = useClipActions(projectId)
-  const { renderJobs, postJobs, postErrors } = useMemo(() => {
+  const { renderJobs, postJobs, postErrors, reviewJobs, reviewErrors } = useMemo(() => {
     const ids = new Set(clips?.map((c) => c.id))
     const renderJobs = new Map<number, Job>()
     const postJobs = new Map<number, Job>()
     const postErrors = new Map<number, string>()
+    const reviewJobs = new Map<number, Job>()
+    const reviewErrors = new Map<number, string>()
     // jobs vêm do mais novo para o mais antigo: o primeiro post_pack de cada corte é o último que rodou
     const seen = new Set<number>()
+    const seenReview = new Set<number>()
     for (const j of jobs ?? []) {
       if (!ids.has(j.ref_id)) continue
       const active = j.status === 'queued' || j.status === 'running'
       if (j.type === 'render' && active) renderJobs.set(j.ref_id, j)
+      if (j.type === 'review') {
+        if (active) reviewJobs.set(j.ref_id, j)
+        if (!seenReview.has(j.ref_id)) {
+          seenReview.add(j.ref_id)
+          if (j.status === 'error') reviewErrors.set(j.ref_id, j.error || 'Falha na revisão')
+        }
+        continue
+      }
       if (j.type !== 'post_pack') continue
       if (active) postJobs.set(j.ref_id, j)
       if (!seen.has(j.ref_id)) {
@@ -446,7 +478,7 @@ export function ClipsPanel({
         if (j.status === 'error') postErrors.set(j.ref_id, j.error || 'Falha ao gerar o pacote')
       }
     }
-    return { renderJobs, postJobs, postErrors }
+    return { renderJobs, postJobs, postErrors, reviewJobs, reviewErrors }
   }, [jobs, clips])
   const renderedCount = clips?.filter((c) => c.status !== 'discarded' && c.output_path).length ?? 0
 
@@ -469,7 +501,12 @@ export function ClipsPanel({
           <Scissors className="size-4" /> Cortes sugeridos
           {activeCount > 0 && <Badge variant="secondary">{activeCount}</Badge>}
         </CardTitle>
-        <CardDescription>Ordenados pela nota de potencial viral. Clique para tocar o trecho.</CardDescription>
+        <CardDescription>
+          Ordenados pela nota de potencial viral. Clique para tocar o trecho.
+          {!!aiCost.total_usd && (
+            <span title="Custo real somado das análises e revisões com Claude neste projeto"> · IA paga neste projeto: {formatUsd(aiCost.total_usd)}</span>
+          )}
+        </CardDescription>
         <div className="col-start-2 row-span-2 row-start-1 flex gap-2 self-start justify-self-end">
           <Button size="sm" variant="outline" onClick={() => setManualOpen(true)} disabled={!enabled}>
             <Plus /> Novo corte manual
@@ -521,6 +558,16 @@ export function ClipsPanel({
               >
                 {postPackAll.isPending ? <Loader2 className="animate-spin" /> : <Send />} Pacote para postar
               </Button>
+              <Button
+                size="sm"
+                className="h-8"
+                variant="outline"
+                disabled={!renderedCount}
+                title="O Claude confere os MP4s finais (pago — mostra o custo antes de confirmar)"
+                onClick={() => setReviewAllOpen(true)}
+              >
+                <ShieldCheck /> Revisar com Claude
+              </Button>
               <Button size="sm" variant="outline" className="h-8" asChild={renderedCount > 0} disabled={!renderedCount}>
                 {renderedCount > 0 ? (
                   <a href={exportZipUrl(projectId)} download title="MP4s + capas + textos.csv/.txt dos cortes renderizados">
@@ -558,6 +605,8 @@ export function ClipsPanel({
                 job={renderJobs.get(c.id)}
                 postJob={postJobs.get(c.id)}
                 postError={postErrors.get(c.id) ?? ''}
+                reviewJob={reviewJobs.get(c.id)}
+                reviewError={reviewErrors.get(c.id) ?? ''}
                 onWatch={setWatching}
               />
             ))}
@@ -565,6 +614,7 @@ export function ClipsPanel({
         )}
       </CardContent>
       {watching && <WatchDialog c={watching} onClose={() => setWatching(null)} />}
+      {reviewAllOpen && <ReviewDialog projectId={projectId} onClose={() => setReviewAllOpen(false)} />}
       {renderAllOpen && <RenderAllDialog projectId={projectId} onClose={() => setRenderAllOpen(false)} />}
       {manualOpen && (
         <ManualClipDialog

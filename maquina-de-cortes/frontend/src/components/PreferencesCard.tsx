@@ -4,9 +4,9 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox, Input, NativeSelect } from '@/components/ui/input'
-import { testOllama, type UserSettings, useOllamaModels, useSaveSettings, useSystemCheck, useUserSettings, useWhisperModels } from '@/api/system'
+import { CLAUDE_MODELS_FALLBACK, testClaude, testOllama, type UserSettings, useClaudeModels, useOllamaModels, useSaveSettings, useSystemCheck, useUserSettings, useWhisperModels } from '@/api/system'
 import { LANGUAGES } from '@/lib/languages'
-import { formatBytes } from '@/lib/format'
+import { formatBytes, formatUsd } from '@/lib/format'
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -28,6 +28,8 @@ export function PreferencesCard() {
   const s = draft ?? saved
   const { data: ollama, error: ollamaErr, isFetching: ollamaLoading } = useOllamaModels(s?.ollama_url ?? '')
   const [testing, setTesting] = useState(false)
+  const [testingClaude, setTestingClaude] = useState(false)
+  const { data: claudeModels } = useClaudeModels()
   if (!s) return null
 
   const set = <K extends keyof UserSettings>(k: K, v: UserSettings[K]) => setDraft({ ...s, [k]: v })
@@ -43,6 +45,20 @@ export function PreferencesCard() {
       toast.error(e instanceof Error ? e.message : 'Falhou')
     } finally {
       setTesting(false)
+    }
+  }
+
+  const runClaudeTest = async () => {
+    setTestingClaude(true)
+    try {
+      // o teste usa o Haiku (o mais barato): uma fração de centavo
+      const r = await testClaude(s.anthropic_api_key, 'claude-haiku-5-5')
+      if (r.ok) toast.success(`${r.message} O teste custou ${formatUsd(r.cost?.usd)}.`)
+      else toast.error(r.message, { description: r.detail })
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falhou')
+    } finally {
+      setTestingClaude(false)
     }
   }
 
@@ -109,6 +125,46 @@ export function PreferencesCard() {
                   {testing ? <Loader2 className="animate-spin" /> : <Zap />} Testar
                 </Button>
               </div>
+            </Field>
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          <h3 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">Claude (opcional, pago)</h3>
+          <p className="text-xs text-muted-foreground">
+            Alternativa à IA local na análise e na revisão visual dos cortes. Cobra por uso na sua conta da Anthropic; o custo estimado
+            aparece antes de cada ação e o custo real depois. Sem chave, nada é enviado.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Chave da API da Anthropic" hint="Fica só neste computador (data/settings.json). Vazio = usa ANTHROPIC_API_KEY do ambiente.">
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  autoComplete="off"
+                  value={s.anthropic_api_key}
+                  onChange={(e) => set('anthropic_api_key', e.target.value)}
+                  placeholder="sk-ant-…"
+                  className="font-mono text-xs"
+                />
+                <Button
+                  variant="outline"
+                  onClick={runClaudeTest}
+                  disabled={testingClaude || dirty}
+                  title={dirty ? 'Salve antes de testar' : 'Pedido mínimo ao Claude Haiku (fração de centavo)'}
+                >
+                  {testingClaude ? <Loader2 className="animate-spin" /> : <Zap />} Testar
+                </Button>
+              </div>
+            </Field>
+            <Field label="Modelo padrão da revisão visual" hint={claudeModels ? `Preços de tabela de ${claudeModels.prices_as_of} (entrada / saída por milhão de tokens).` : undefined}>
+              <NativeSelect value={s.claude_model} onChange={(e) => set('claude_model', e.target.value)}>
+                {(claudeModels?.models ?? CLAUDE_MODELS_FALLBACK).map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                    {claudeModels && ` · US$ ${m.input_per_mtok} / ${m.output_per_mtok}`}
+                  </option>
+                ))}
+              </NativeSelect>
             </Field>
           </div>
         </section>

@@ -52,3 +52,31 @@ def estimate(project_dir: Path, duration: float, language: str, us: UserSettings
     for st in stages:
         st["seconds"] = round(st["seconds"])
     return {"total_seconds": sum(s["seconds"] for s in stages), "stages": stages, "gpu": device == "cuda"}
+
+
+def estimate_claude(project_dir: Path, duration: float, num_clips: int, template_key: str) -> dict:
+    """Custo estimado da análise com cada modelo do Claude (US$). Usa a transcrição real quando já existe;
+    senão, uma média por segundo de vídeo (arredondada para cima)."""
+    from .services import claude
+    from .services.highlighter import build_messages, transcript_lines
+    from .services.templates import get_template
+
+    template = get_template(template_key)
+    windows = make_windows(duration)
+    factor = 2.5 if template.heuristic == "reactions" else 1.5
+    prompt_chars: float | None = None
+    tr_path = project_dir / "transcript.json"
+    if tr_path.exists():
+        try:
+            tr = json.loads(tr_path.read_text(encoding="utf-8"))
+            prompt_chars = float(sum(
+                len(m["content"]) for t0, t1 in windows
+                for m in build_messages(transcript_lines(tr, t0, t1), t0, t1, 3, 60, 90, template.prompt)))
+        except (ValueError, KeyError):
+            prompt_chars = None
+    per_window, chars = claude.windows_cost_inputs(duration, num_clips, factor, len(windows), prompt_chars)
+    if prompt_chars is not None:
+        chars = prompt_chars  # já inclui as instruções de cada chamada
+    return {"from_transcript": prompt_chars is not None, "prices_as_of": claude.PRICES_AS_OF,
+            "models": [{**claude.estimate_analysis(m, len(windows), per_window, chars), "label": claude.MODEL_LABELS[m]}
+                       for m in claude.PRICES]}

@@ -58,6 +58,10 @@ class UserSettings(BaseModel):
     normalize_audio: bool = True  # loudnorm -14 LUFS (padrão das redes)
     default_language: str = "pt"
     cookies_path: str = ""
+    # Claude (opcional, pago): vazio = usa ANTHROPIC_API_KEY do ambiente. Nunca sai deste computador
+    # a não ser para a própria API da Anthropic.
+    anthropic_api_key: str = ""
+    claude_model: str = "claude-opus-5-5"
 
 
 @lru_cache
