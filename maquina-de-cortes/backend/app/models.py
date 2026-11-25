@@ -49,6 +49,7 @@ class Job(SQLModel, table=True):
     error_detail: str = ""
     uses_gpu: bool = False
     priority: int = 0  # maior = antes
+    params_json: str = "{}"  # opções do job (ex.: post_pack → {"texts": bool, "cover": bool})
     created_at: datetime = Field(default_factory=now)
     started_at: datetime | None = None
     finished_at: datetime | None = None
@@ -102,6 +103,9 @@ class Clip(SQLModel, table=True):
     caption_overrides_json: str = "{}"  # {"words": {"<s 3 casas>": texto}, "style": {...}, "title_until": 3|null}
     export_json: str = "{}"  # {"quality": "high"|"normal"|"small", "normalize_audio": bool}
     title_overlay: str = ""
+    # pacote para postar: {"tiktok": {caption, hashtags}, "reels": {...}, "shorts": {title, description, hashtags},
+    #  "texts_at", "model", "cover_t", "cover_at"} — capas em data/projects/<id>/clips/<cid>/cover*.jpg
+    post_json: str = "{}"
     output_path: str = ""
     error: str = ""
     rendered_at: datetime | None = None
@@ -131,4 +135,6 @@ class CaptionStyle(SQLModel, table=True):
 
 
 # "reframe" (cenas + rostos) roda na CPU: fica no slot leve, em paralelo com a transcrição na GPU
-GPU_JOB_TYPES = {"transcribe", "analyze", "render"}
+# post_pack usa o Ollama (VRAM) → slot pesado, um por vez
+GPU_JOB_TYPES = {"transcribe", "analyze", "render", "post_pack"}
+CLIP_JOB_TYPES = {"render", "post_pack"}  # ref_id = id do corte

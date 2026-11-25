@@ -36,6 +36,7 @@ export interface Job {
   error_detail: string
   uses_gpu: boolean
   priority: number
+  params_json?: string
   created_at: string
   started_at: string | null
   finished_at: string | null
@@ -166,11 +167,27 @@ export interface Clip {
   caption_overrides_json: string
   export_json: string
   title_overlay: string
+  post_json: string
   output_path: string
   error: string
   rendered_at: string | null
   created_at: string
   updated_at: string
+}
+
+export type Platform = 'tiktok' | 'reels' | 'shorts'
+
+/** Pacote para postar (Clip.post_json). */
+export interface PostPack {
+  tiktok?: { caption: string; hashtags: string[] }
+  reels?: { caption: string; hashtags: string[] }
+  shorts?: { title: string; description: string; hashtags: string[] }
+  texts_at?: string
+  edited_at?: string
+  model?: string
+  cover_t?: number
+  cover_at?: string
+  cover_title?: boolean
 }
 
 export interface ScoreBreakdown {

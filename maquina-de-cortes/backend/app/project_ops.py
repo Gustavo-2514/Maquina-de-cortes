@@ -9,7 +9,7 @@ from pathlib import Path
 from sqlmodel import Session, col, select
 
 from .config import get_settings
-from .models import Clip, Download, Job, Project, now
+from .models import CLIP_JOB_TYPES, Clip, Download, Job, Project, now
 from .queue import cancel_job, enqueue
 from .schemas import AnalysisOptions
 
@@ -90,7 +90,7 @@ def delete_project(session: Session, project: Project) -> None:
     for j in session.exec(select(Job).where(col(Job.type).in_(PIPELINE_JOBS), Job.ref_id == project.id)).all():
         session.delete(j)
     for c in session.exec(select(Clip).where(Clip.project_id == project.id)).all():
-        for j in session.exec(select(Job).where(Job.type == "render", Job.ref_id == c.id)).all():
+        for j in session.exec(select(Job).where(col(Job.type).in_(CLIP_JOB_TYPES), Job.ref_id == c.id)).all():
             session.delete(j)
         session.delete(c)
     session.delete(project)

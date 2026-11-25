@@ -22,7 +22,7 @@ from ..errors import friendly
 from ..models import Clip, Download, Job, Project, now
 from ..project_ops import ProjectError, options_of, project_from_download, start_analysis
 from ..queue import enqueue
-from ..services import captions, downloader, hardware, highlighter, probe, proxy, reframer, renderer, transcriber
+from ..services import captions, downloader, hardware, highlighter, postpack, probe, proxy, reframer, renderer, transcriber
 from ..services.caption_styles import style_for_clip
 from ..services.templates import get_template
 from ..services.ffmpeg import FFmpegCanceled, run_ffmpeg
@@ -478,6 +478,52 @@ def export_dir_for(project: Project) -> Path:
     return base / f"{renderer.slugify(project.name, 60)}-{project.id}"
 
 
+def render_plan(clip: Clip, project: Project, all_words: list[dict], cdir: Path,
+                ctx: JobContext) -> tuple[renderer.RenderSpec, reframer.Track | None, str]:
+    """Spec de render + trilha de crop (modos que seguem rosto) — usado pelo render e pela capa."""
+    src = Path(project.source_path)
+    if not src.is_file():
+        raise RuntimeError(f"Arquivo-fonte não encontrado: {src}")
+    mode = clip.reframe_mode
+    keyframes = []
+    if mode == "manual":
+        try:
+            keyframes = [k for k in json.loads(clip.manual_crop_json or "[]") if "t" in k and "x" in k]
+        except ValueError:
+            keyframes = []
+        if not keyframes:
+            mode = "center"  # manual sem keyframes = centro
+    us = load_user_settings()
+    encoder = "nvenc" if (us.encoder == "nvenc" or (us.encoder == "auto" and hardware.nvenc_works())) else "x264"
+    quality, normalize = _parse_export(clip.export_json)
+    spec = renderer.RenderSpec(source=src, start_s=clip.start_s, end_s=clip.end_s, src_w=project.width or 1920,
+                               src_h=project.height or 1080, src_fps=project.fps, mode=mode, encoder=encoder,
+                               normalize_audio=us.normalize_audio if normalize is None else normalize,
+                               has_audio=project.has_audio, quality=quality)
+
+    track = None
+    wide = (project.width or 0) / max(1, project.height or 1) > 9 / 16 + 0.01
+    if mode in ("auto", "speaker", "split", "manual", "gameplay") and wide:
+        faces, cuts = ({}, []) if mode == "manual" else ensure_face_analysis(
+            project, lambda pct, msg: ctx.report(min(40.0, 0.4 * pct), f"Analisando rostos (1ª vez)… {msg}"), ctx)
+        try:
+            layout = json.loads(clip.layout_json or "{}")
+        except ValueError:
+            layout = {}
+        computed = reframer.compute_track(faces, cuts, clip.start_s, clip.end_s, spec.src_w, spec.src_h, spec.fps,
+                                          mode, keyframes, speech=speech_intervals(all_words) if mode == "speaker" else None,
+                                          layout=layout)
+        (cdir / "crop.json").write_text(json.dumps(computed.to_json(), separators=(",", ":")))
+        if mode == "gameplay":
+            spec.gameplay = computed.gameplay  # caixas fixas: só filtros do ffmpeg
+        else:
+            track = computed
+    elif mode not in ("center", "blur_fit"):
+        mode = "center"  # fonte já vertical: não há o que reenquadrar
+    spec.mode = mode if mode in ("center", "blur_fit", "gameplay") else "center"
+    return spec, track, mode
+
+
 def handle_render(ctx: JobContext) -> None:
     with Session(engine) as s:
         clip = s.get(Clip, ctx.ref_id)
@@ -506,46 +552,8 @@ def handle_render(ctx: JobContext) -> None:
         ass = captions.build_ass(words, st, dur, title=clip.title_overlay, title_until=ov.title_until)
         (cdir / "captions.ass").write_text(ass, encoding="utf-8")
 
-        src = Path(project.source_path)
-        if not src.is_file():
-            raise RuntimeError(f"Arquivo-fonte não encontrado: {src}")
-        mode = clip.reframe_mode
-        keyframes = []
-        if mode == "manual":
-            try:
-                keyframes = [k for k in json.loads(clip.manual_crop_json or "[]") if "t" in k and "x" in k]
-            except ValueError:
-                keyframes = []
-            if not keyframes:
-                mode = "center"  # manual sem keyframes = centro
-        us = load_user_settings()
-        encoder = "nvenc" if (us.encoder == "nvenc" or (us.encoder == "auto" and hardware.nvenc_works())) else "x264"
-        quality, normalize = _parse_export(clip.export_json)
-        spec = renderer.RenderSpec(source=src, start_s=clip.start_s, end_s=clip.end_s, src_w=project.width or 1920,
-                                   src_h=project.height or 1080, src_fps=project.fps, mode=mode, encoder=encoder,
-                                   normalize_audio=us.normalize_audio if normalize is None else normalize,
-                                   has_audio=project.has_audio, quality=quality)
-
-        track = None
-        wide = (project.width or 0) / max(1, project.height or 1) > 9 / 16 + 0.01
-        if mode in ("auto", "speaker", "split", "manual", "gameplay") and wide:
-            faces, cuts = ({}, []) if mode == "manual" else ensure_face_analysis(
-                project, lambda pct, msg: ctx.report(min(40.0, 0.4 * pct), f"Analisando rostos (1ª vez)… {msg}"), ctx)
-            try:
-                layout = json.loads(clip.layout_json or "{}")
-            except ValueError:
-                layout = {}
-            computed = reframer.compute_track(faces, cuts, clip.start_s, clip.end_s, spec.src_w, spec.src_h, spec.fps,
-                                              mode, keyframes, speech=speech_intervals(all_words) if mode == "speaker" else None,
-                                              layout=layout)
-            (cdir / "crop.json").write_text(json.dumps(computed.to_json(), separators=(",", ":")))
-            if mode == "gameplay":
-                spec.gameplay = computed.gameplay  # caixas fixas: só filtros do ffmpeg
-            else:
-                track = computed
-        elif mode not in ("center", "blur_fit"):
-            mode = "center"  # fonte já vertical: não há o que reenquadrar
-        spec.mode = mode if mode in ("center", "blur_fit", "gameplay") else "center"
+        spec, track, mode = render_plan(clip, project, all_words, cdir, ctx)
+        src, encoder = spec.source, spec.encoder
 
         out_dir = export_dir_for(project)
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -618,7 +626,173 @@ def handle_render(ctx: JobContext) -> None:
     ctx.report(100, f"Pronto: {out.name}", force=True)
 
 
+# --- Pacote para postar (roadmap #9) ------------------------------------------------------
+def _grab_frame(args: list[str], w: int, h: int, ctx: JobContext):  # -> np.ndarray | None
+    """Roda o ffmpeg e lê 1 quadro BGR cru (w×h) do stdout."""
+    import numpy as np
+
+    p = subprocess.run(["ffmpeg", "-v", "error", "-nostdin", *args, "-frames:v", "1", "-f", "rawvideo",
+                        "-pix_fmt", "bgr24", "-"], capture_output=True, timeout=120)
+    ctx.check_canceled()
+    if p.returncode != 0 or len(p.stdout) < w * h * 3:
+        log.warning("quadro da capa falhou: %s", p.stderr.decode(errors="replace")[-300:])
+        return None
+    return np.frombuffer(p.stdout[:w * h * 3], np.uint8).reshape(h, w, 3)
+
+
+def cover_frame(spec: renderer.RenderSpec, track: reframer.Track | None, t: float, ctx: JobContext):
+    """Quadro 1080×1920 já enquadrado igual ao render, sem legenda, no instante `t` (s na fonte)."""
+    if track is not None:
+        frame = _grab_frame(["-ss", f"{t:.3f}", "-i", str(spec.source), "-an", "-vf", f"scale={spec.src_w}:{spec.src_h}"],
+                            spec.src_w, spec.src_h, ctx)
+        if frame is None:
+            return None
+        import cv2
+
+        img = reframer.frame_crop(frame, track, int(round((t - spec.start_s) * track.fps)), compose=True)
+        return img if img.shape[:2] == (renderer.OUT_H, renderer.OUT_W) else cv2.resize(img, (renderer.OUT_W, renderer.OUT_H))
+    clean = renderer.RenderSpec(**{**spec.__dict__, "ass_file": None})
+    return _grab_frame(["-ss", f"{t:.3f}", "-i", str(spec.source), "-an", "-filter_complex", renderer.video_filter(clean),
+                        "-map", "[v]"], renderer.OUT_W, renderer.OUT_H, ctx)
+
+
+def make_cover(clip: Clip, project: Project, all_words: list[dict], cdir: Path, ctx: JobContext,
+               p0: float, p1: float) -> float:
+    """Escolhe o melhor quadro (rosto + nitidez) e salva cover.jpg e cover-titulo.jpg. Retorna o instante."""
+    import cv2
+
+    pdir = get_settings().project_dir(project.id)  # type: ignore[arg-type]
+    ctx.report(p0, "Capa: preparando o enquadramento…", force=True)
+    spec, track, mode = render_plan(clip, project, all_words, cdir, ctx)
+    faces, cuts = {}, []
+    if (pdir / "faces.json").exists() and (pdir / "scenes.json").exists():
+        faces = json.loads((pdir / "faces.json").read_text())
+        cuts = json.loads((pdir / "scenes.json").read_text()).get("cuts", [])
+
+    window_at = None
+    if track is not None:
+        half = track.crop_w / track.src_w / 2
+
+        def window_at(t: float):
+            i = min(track.n - 1, max(0, int(round((t - spec.start_s) * track.fps))))
+            return None if track.layout[i] else (track.cx[i] - half, track.cx[i] + half)
+    elif mode == "center":
+        cw = renderer.center_crop_box(spec.src_w, spec.src_h)[0] / spec.src_w
+        window_at = lambda _t: (0.5 - cw / 2, 0.5 + cw / 2)  # noqa: E731
+
+    cands = postpack.cover_candidates(faces, cuts, clip.start_s, clip.end_s, window_at=window_at)
+    frames = {}
+    for k, c in enumerate(cands):
+        ctx.report(p0 + (p1 - p0) * 0.9 * k / len(cands), f"Capa: avaliando quadro {k + 1} de {len(cands)}…")
+        img = cover_frame(spec, track, c.t, ctx)
+        if img is not None:
+            c.sharp = postpack.sharpness(img)
+            frames[c.t] = img
+    cands = [c for c in cands if c.t in frames]
+    if not cands:
+        raise RuntimeError("Não foi possível extrair quadros do vídeo para a capa.")
+    best = postpack.pick_cover(cands)
+    cover = cdir / "cover.jpg"
+    if not cv2.imwrite(str(cover), frames[best.t], [cv2.IMWRITE_JPEG_QUALITY, 92]):
+        raise RuntimeError("Falha ao salvar a capa.")
+    title = (clip.title_overlay or clip.title or "").strip()
+    titled = cdir / "cover-titulo.jpg"
+    if title:
+        (cdir / "cover.ass").write_text(postpack.cover_ass(title), encoding="utf-8")
+        run_ffmpeg(["-i", "cover.jpg", "-vf", f"ass=cover.ass:fontsdir={renderer.filter_escape(str(renderer.FONTS_DIR))}",
+                    "-frames:v", "1", "-q:v", "2", "cover-titulo.jpg"], cwd=cdir, error_message="Falha na capa com título")
+    elif titled.exists():
+        titled.unlink()
+    return best.t
+
+
+def _current_post(cid: int) -> dict:
+    with Session(engine) as s:
+        c = s.get(Clip, cid)
+        return postpack.load_post(c.post_json if c else "{}")
+
+
+def handle_post_pack(ctx: JobContext) -> None:
+    """Textos por plataforma (Ollama) e/ou capa de um corte. params: {"texts": bool, "cover": bool}."""
+    with Session(engine) as s:
+        clip = s.get(Clip, ctx.ref_id)
+        if clip is None:
+            raise RuntimeError("Corte não existe mais.")
+        project = s.get(Project, clip.project_id)
+        job = s.get(Job, ctx.job_id)
+        if project is None:
+            raise RuntimeError("Projeto não existe mais.")
+        for obj in (clip, project):
+            s.expunge(obj)
+        params = json.loads(job.params_json or "{}") if job else {}
+    do_texts, do_cover = params.get("texts", True), params.get("cover", True)
+
+    pdir = get_settings().project_dir(project.id)  # type: ignore[arg-type]
+    cdir = pdir / "clips" / str(clip.id)
+    cdir.mkdir(parents=True, exist_ok=True)
+    tp = pdir / "transcript.json"
+    transcript = json.loads(tp.read_text(encoding="utf-8")) if tp.exists() else {"segments": []}
+    all_words = [w for seg in transcript["segments"] for w in seg["words"]]
+    ov = captions.parse_overrides(clip.caption_overrides_json)
+    words = captions.clip_words(all_words, clip.start_s, clip.end_s, ov.words)
+    errors: list[str] = []
+
+    if do_texts:
+        ctx.report(2, "Escrevendo legendas e hashtags (IA)…", force=True)
+        text = " ".join(w["w"].strip() for w in words).strip()
+        if not text:
+            errors.append("textos: o corte não tem fala transcrita")
+        else:
+            us = load_user_settings()
+            lang = project.detected_language or (project.language if project.language != "auto" else "pt")
+            llm = highlighter.ollama_chat(us.ollama_url, us.ollama_model, ctx.is_canceled,
+                                          lambda n: ctx.report(min(45.0, 2 + n / 8), "Escrevendo legendas e hashtags (IA)…"),
+                                          schema=postpack.POST_SCHEMA)
+            msgs = postpack.build_post_messages(clip.title, clip.hook_text, text, lang, clip.end_s - clip.start_s,
+                                                project.name)
+            data = None
+            for attempt, temp in enumerate((0.7, 0.4)):
+                try:
+                    data = postpack.parse_post(llm(msgs, temp))
+                    break
+                except highlighter.Canceled:
+                    raise JobCanceled() from None
+                except highlighter.HighlightError as e:  # Ollama fora do ar/sem o modelo: a capa ainda sai
+                    errors.append(f"textos: {e}")
+                    break
+                except (ValueError, KeyError, TypeError) as e:
+                    log.warning("post_pack: resposta inválida do LLM (tentativa %s): %s", attempt + 1, e)
+            if data is None:
+                if not errors:
+                    errors.append("textos: a IA não devolveu um JSON válido")
+            else:
+                cur = _current_post(clip.id)  # relê: pode ter mudado enquanto a IA escrevia
+                cur.update(data, texts_at=now().isoformat(), model=us.ollama_model)
+                _update_clip(clip.id, post_json=json.dumps(cur, ensure_ascii=False))  # type: ignore[arg-type]
+
+    if do_cover:
+        try:
+            t = make_cover(clip, project, all_words, cdir, ctx, 50.0 if do_texts else 2.0, 98.0)
+        except (JobCanceled, FFmpegCanceled):
+            raise
+        except Exception as e:  # noqa: BLE001
+            if ctx.is_canceled():
+                raise JobCanceled() from None
+            log.exception("capa do corte %s falhou", clip.id)
+            errors.append(f"capa: {friendly(e)[0]}")
+        else:
+            cur = _current_post(clip.id)
+            cur.update(cover_t=round(t - clip.start_s, 3), cover_at=now().isoformat(),
+                       cover_title=(cdir / "cover-titulo.jpg").exists())
+            _update_clip(clip.id, post_json=json.dumps(cur, ensure_ascii=False))  # type: ignore[arg-type]
+
+    if errors:
+        raise RuntimeError("; ".join(errors))
+    ctx.report(100, "Pacote pronto", force=True)
+
+
 HANDLERS: dict[str, Callable[[JobContext], None]] = {
+    "post_pack": handle_post_pack,
     "download": handle_download,
     "probe_proxy": handle_probe_proxy,
     "transcribe": handle_transcribe,

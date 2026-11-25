@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, post } from './client'
 import { jobsKey, upsertJob } from './jobs'
-import type { Clip, Job, ScoreBreakdown, Template } from './types'
+import type { Clip, Job, Platform, PostPack, ScoreBreakdown, Template } from './types'
 
 export const clipsKey = (projectId: number) => ['clips', projectId] as const
 
@@ -48,6 +48,20 @@ export function useClipActions(projectId: number) {
       mutationFn: () => post<Job[]>(`/projects/${projectId}/render-all`),
       onSuccess: (js) => qc.setQueryData<Job[]>(jobsKey, (old) => js.reduce((acc, j) => upsertJob(acc, j), old ?? [])),
     }),
+    postPack: useMutation({
+      mutationFn: ({ id, texts, cover }: { id: number; texts: boolean; cover: boolean }) =>
+        post<Job>(`/clips/${id}/post-pack`, { texts, cover }),
+      onSuccess: (j) => qc.setQueryData<Job[]>(jobsKey, (old) => upsertJob(old, j)),
+    }),
+    postPackAll: useMutation({
+      mutationFn: () => post<Job[]>(`/projects/${projectId}/post-pack`, { only_missing: true }),
+      onSuccess: (js) => qc.setQueryData<Job[]>(jobsKey, (old) => js.reduce((acc, j) => upsertJob(acc, j), old ?? [])),
+    }),
+    savePost: useMutation({
+      mutationFn: ({ id, ...texts }: Required<Pick<PostPack, Platform>> & { id: number }) =>
+        api<Clip>(`/clips/${id}/post`, { method: 'PUT', body: JSON.stringify(texts) }),
+      onSuccess: put,
+    }),
     remove: useMutation({
       mutationFn: (id: number) => api<{ ok: boolean }>(`/clips/${id}`, { method: 'DELETE' }),
       onSuccess: (_r, id) => qc.setQueryData<Clip[]>(clipsKey(projectId), (old) => old?.filter((c) => c.id !== id)),
@@ -58,6 +72,48 @@ export function useClipActions(projectId: number) {
 export const clipFileUrl = (id: number, download = false) => `/api/clips/${id}/file${download ? '?download=1' : ''}`
 export const clipPreviewUrl = (c: Clip) =>
   `/api/media/projects/${c.project_id}/clips/${c.id}/preview.jpg?v=${encodeURIComponent(c.rendered_at ?? '')}`
+
+export function parsePost(c: Clip): PostPack {
+  try {
+    const p = JSON.parse(c.post_json || '{}')
+    return p && typeof p === 'object' ? p : {}
+  } catch {
+    return {}
+  }
+}
+
+export const hasPostTexts = (p: PostPack) => !!(p.tiktok || p.reels || p.shorts)
+
+export const PLATFORM_LABELS: Record<Platform, string> = { tiktok: 'TikTok', reels: 'Reels', shorts: 'Shorts' }
+
+export const tagsLine = (tags: string[], extra: string[] = []) => [...tags, ...extra].map((t) => `#${t}`).join(' ')
+
+/** Texto pronto para colar na plataforma (igual ao textos.txt do .zip). */
+export function platformText(p: PostPack, k: Platform): string {
+  if (k === 'shorts') {
+    const s = p.shorts
+    return s ? [s.description, tagsLine(s.hashtags, ['Shorts'])].filter(Boolean).join('\n\n') : ''
+  }
+  const x = p[k]
+  return x ? [x.caption, tagsLine(x.hashtags)].filter(Boolean).join('\n\n') : ''
+}
+
+/** "#um dois, #três" → ["um", "dois", "três"] (o backend normaliza acentos e limites). */
+export const parseTags = (s: string) =>
+  s
+    .split(/[\s,]+/)
+    .map((t) => t.replace(/^#+/, ''))
+    .filter(Boolean)
+
+export const coverUrl = (c: Clip, titled = false, download = false) => {
+  const p = parsePost(c)
+  const q = new URLSearchParams({ v: p.cover_at ?? '' })
+  if (titled) q.set('titled', '1')
+  if (download) q.set('download', '1')
+  return `/api/clips/${c.id}/cover?${q}`
+}
+
+export const exportZipUrl = (projectId: number) => `/api/projects/${projectId}/export.zip`
 
 export const useTemplates = () =>
   useQuery({ queryKey: ['templates'], queryFn: () => api<Template[]>('/templates'), staleTime: Infinity })

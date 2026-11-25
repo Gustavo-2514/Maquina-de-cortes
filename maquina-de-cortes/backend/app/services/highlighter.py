@@ -243,12 +243,12 @@ LLMCall = Callable[[list[dict], float], str]
 
 
 def ollama_chat(url: str, model: str, is_canceled: Callable[[], bool],
-                on_chunk: Callable[[int], None] | None = None) -> LLMCall:
+                on_chunk: Callable[[int], None] | None = None, schema: dict | None = None) -> LLMCall:
     """Retorna uma função (messages, temperature) → texto, com streaming para permitir cancelar."""
     base = url.rstrip("/")
 
     def call(messages: list[dict], temperature: float) -> str:
-        body = {"model": model, "messages": messages, "stream": True, "format": SCHEMA,
+        body = {"model": model, "messages": messages, "stream": True, "format": schema or SCHEMA,
                 "options": {"temperature": temperature, "num_ctx": 8192}, "keep_alive": "5m"}
         parts: list[str] = []
         try:

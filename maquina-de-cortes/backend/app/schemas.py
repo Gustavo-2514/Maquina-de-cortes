@@ -125,3 +125,19 @@ class OllamaTest(BaseModel):
 class ApplyTemplate(BaseModel):
     template: str
     render: bool = False  # já enfileira o render de todos os cortes ativos
+
+
+class PostPackRequest(BaseModel):
+    """Pacote para postar: o que (re)gerar. No projeto, `only_missing` pula o que já existe."""
+
+    texts: bool = True
+    cover: bool = True
+    only_missing: bool = True
+
+
+class PostTexts(BaseModel):
+    """Edição manual dos textos: {"caption", "hashtags"} (tiktok/reels) e {"title", "description", "hashtags"} (shorts)."""
+
+    tiktok: dict = Field(default_factory=dict)
+    reels: dict = Field(default_factory=dict)
+    shorts: dict = Field(default_factory=dict)

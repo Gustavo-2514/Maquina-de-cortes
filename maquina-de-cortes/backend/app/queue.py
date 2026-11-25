@@ -8,13 +8,17 @@ from __future__ import annotations
 from sqlalchemy import update
 from sqlmodel import Session, col, select
 
-from .models import GPU_JOB_TYPES, Clip, Download, Job, Project, now
+import json
+
+from .models import CLIP_JOB_TYPES, GPU_JOB_TYPES, Clip, Download, Job, Project, now
 
 FINISHED = {"done", "error", "canceled"}
 
 
-def enqueue(session: Session, type_: str, ref_id: int, priority: int = 0, message: str = "Na fila") -> Job:
-    job = Job(type=type_, ref_id=ref_id, uses_gpu=type_ in GPU_JOB_TYPES, priority=priority, message=message)
+def enqueue(session: Session, type_: str, ref_id: int, priority: int = 0, message: str = "Na fila",
+            params: dict | None = None) -> Job:
+    job = Job(type=type_, ref_id=ref_id, uses_gpu=type_ in GPU_JOB_TYPES, priority=priority, message=message,
+              params_json=json.dumps(params or {}))
     session.add(job)
     session.commit()
     session.refresh(job)
@@ -113,7 +117,7 @@ def job_target(session: Session, job: Job) -> dict:
     if job.type == "download":
         dl = session.get(Download, job.ref_id)
         return {"target": (dl.title or dl.url) if dl else f"download #{job.ref_id}", "target_link": "/downloads"}
-    if job.type == "render":
+    if job.type in CLIP_JOB_TYPES:
         c = session.get(Clip, job.ref_id)
         p = session.get(Project, c.project_id) if c else None
         name = f"{c.title or 'Corte'}" + (f" · {p.name}" if p else "") if c else f"corte #{job.ref_id}"

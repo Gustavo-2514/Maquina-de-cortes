@@ -54,4 +54,5 @@ export const JOB_TYPE_LABELS: Record<string, string> = {
   analyze: 'Análise (IA)',
   reframe: 'Análise de rostos',
   render: 'Render',
+  post_pack: 'Pacote para postar',
 }

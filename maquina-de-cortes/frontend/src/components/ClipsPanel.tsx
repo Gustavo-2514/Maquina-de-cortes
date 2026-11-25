@@ -1,4 +1,4 @@
-import { AlertTriangle, ArchiveRestore, Ban, ChevronDown, Copy, Download, Film, FolderOpen, Loader2, Pause, Pencil, Play, Plus, Scissors, Trash2, X } from 'lucide-react'
+import { AlertTriangle, ArchiveRestore, Ban, ChevronDown, Copy, Download, Film, FolderOpen, Loader2, Package, Pause, Pencil, Play, Plus, Scissors, Send, Trash2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog } from '@/components/ui/dialog'
 import { Input, NativeSelect, Progress } from '@/components/ui/input'
-import { clipFileUrl, clipPreviewUrl, parseBreakdown, REFRAME_LABELS, useApplyTemplate, useClipActions, useClips } from '@/api/clips'
+import { clipFileUrl, clipPreviewUrl, exportZipUrl, parseBreakdown, REFRAME_LABELS, useApplyTemplate, useClipActions, useClips } from '@/api/clips'
+import { PostPackBadge, PostPackPanel } from '@/components/PostPackPanel'
 import { parseOptions, useProject } from '@/api/projects'
 import { TemplatePicker } from '@/components/TemplatePicker'
 import { openFolder } from '@/api/downloads'
@@ -137,6 +138,8 @@ function ClipRow({
   selected,
   onPlay,
   job,
+  postJob,
+  postError,
   onWatch,
 }: {
   c: Clip
@@ -144,9 +147,12 @@ function ClipRow({
   selected: boolean
   onPlay: (c: Clip) => void
   job: Job | undefined
+  postJob: Job | undefined
+  postError: string
   onWatch: (c: Clip) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [postOpen, setPostOpen] = useState(false)
   const { update, duplicate, remove, render } = useClipActions(c.project_id)
   const discarded = c.status === 'discarded'
   const onError = (e: Error) => toast.error(e.message)
@@ -160,6 +166,7 @@ function ClipRow({
             <div className="flex items-center gap-2">
               <span className={cn('truncate font-medium', discarded && 'line-through')}>{c.title || 'Sem título'}</span>
               {c.status === 'edited' && c.origin === 'ai' && <Badge variant="secondary">editado</Badge>}
+              <PostPackBadge c={c} />
             </div>
             <div className="mt-0.5 text-xs text-muted-foreground tabular-nums">
               {formatTime(c.start_s)} → {formatTime(c.end_s)} · {formatDuration(c.end_s - c.start_s)}
@@ -216,6 +223,15 @@ function ClipRow({
                 <X /> Descartar
               </Button>
             )}
+            <Button
+              size="sm"
+              variant={postOpen ? 'secondary' : 'ghost'}
+              disabled={discarded}
+              onClick={() => setPostOpen((o) => !o)}
+              title="Legendas, hashtags e capa para postar"
+            >
+              {postJob ? <Loader2 className="animate-spin" /> : <Send />} Postar
+            </Button>
             <Button size="sm" variant="ghost" onClick={() => duplicate.mutate(c.id, { onError, onSuccess: () => toast.success('Corte duplicado') })}>
               <Copy /> Duplicar
             </Button>
@@ -241,6 +257,7 @@ function ClipRow({
           </div>
 
           {!discarded && <RenderStatus c={c} job={job} onWatch={onWatch} />}
+          {!discarded && postOpen && <PostPackPanel c={c} job={postJob} lastError={postError} />}
 
           {open && (
             <div className="mt-2 space-y-3 rounded-lg bg-muted/40 p-3 text-sm">
@@ -410,12 +427,28 @@ export function ClipsPanel({
   const [renderAllOpen, setRenderAllOpen] = useState(false)
   const navigate = useNavigate()
   const { data: jobs } = useJobs()
-  const renderJobs = useMemo(() => {
+  const { postPackAll } = useClipActions(projectId)
+  const { renderJobs, postJobs, postErrors } = useMemo(() => {
     const ids = new Set(clips?.map((c) => c.id))
-    const m = new Map<number, Job>()
-    for (const j of jobs ?? []) if (j.type === 'render' && ids.has(j.ref_id) && (j.status === 'queued' || j.status === 'running')) m.set(j.ref_id, j)
-    return m
+    const renderJobs = new Map<number, Job>()
+    const postJobs = new Map<number, Job>()
+    const postErrors = new Map<number, string>()
+    // jobs vêm do mais novo para o mais antigo: o primeiro post_pack de cada corte é o último que rodou
+    const seen = new Set<number>()
+    for (const j of jobs ?? []) {
+      if (!ids.has(j.ref_id)) continue
+      const active = j.status === 'queued' || j.status === 'running'
+      if (j.type === 'render' && active) renderJobs.set(j.ref_id, j)
+      if (j.type !== 'post_pack') continue
+      if (active) postJobs.set(j.ref_id, j)
+      if (!seen.has(j.ref_id)) {
+        seen.add(j.ref_id)
+        if (j.status === 'error') postErrors.set(j.ref_id, j.error || 'Falha ao gerar o pacote')
+      }
+    }
+    return { renderJobs, postJobs, postErrors }
   }, [jobs, clips])
+  const renderedCount = clips?.filter((c) => c.status !== 'discarded' && c.output_path).length ?? 0
 
   const visible = useMemo(() => {
     const list = (clips ?? []).filter((c) => {
@@ -472,6 +505,34 @@ export function ClipsPanel({
                 </Button>
               ))}
             </div>
+            <div className="ml-auto flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                className="h-8"
+                variant="outline"
+                disabled={!activeCount || postPackAll.isPending}
+                title="A IA escreve legenda e hashtags por plataforma e escolhe a capa de cada corte ativo (só o que ainda falta)"
+                onClick={() =>
+                  postPackAll.mutate(undefined, {
+                    onSuccess: (js) => toast.success(`${js.length} corte(s) na fila do pacote para postar`),
+                    onError: (e) => toast.error(e.message),
+                  })
+                }
+              >
+                {postPackAll.isPending ? <Loader2 className="animate-spin" /> : <Send />} Pacote para postar
+              </Button>
+              <Button size="sm" variant="outline" className="h-8" asChild={renderedCount > 0} disabled={!renderedCount}>
+                {renderedCount > 0 ? (
+                  <a href={exportZipUrl(projectId)} download title="MP4s + capas + textos.csv/.txt dos cortes renderizados">
+                    <Package /> Exportar tudo (.zip)
+                  </a>
+                ) : (
+                  <span title="Renderize os cortes primeiro">
+                    <Package /> Exportar tudo (.zip)
+                  </span>
+                )}
+              </Button>
+            </div>
           </div>
         )}
 
@@ -495,6 +556,8 @@ export function ClipsPanel({
                 selected={selectedId === c.id}
                 onPlay={onPlay}
                 job={renderJobs.get(c.id)}
+                postJob={postJobs.get(c.id)}
+                postError={postErrors.get(c.id) ?? ''}
                 onWatch={setWatching}
               />
             ))}

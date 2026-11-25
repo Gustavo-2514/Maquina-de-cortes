@@ -267,3 +267,26 @@ Registro de escolhas onde a especificação era ambígua ou o ambiente exigiu ad
 - **Tela Início** (`/inicio`, nova rota padrão): um campo único "cole o link → Criar cortes" que baixa com `send_to_project=true` (download → projeto → análise sozinhos); playlists vão para Downloads com `?links=` e são analisadas automaticamente; arrastar/escolher arquivo faz upload e abre o projeto. Mostra "Em andamento", "Continuar editando" e "Como funciona".
 - **Sidebar** na ordem do fluxo, com o job que está rodando visível (progresso) e recolhida para ícones dentro do editor.
 - **Assets** em `frontend/public/brand/` (logo SVG, ilustrações, vídeo-loop do hero) gerados com Higgsfield (gpt_image_2_6 / seedance_2_5). O hero respeita `prefers-reduced-motion`.
+
+## Pacote para postar (roadmap #9, 2026-11-25)
+
+- **Job `post_pack`** (por corte, `ref_id` = clip; slot de GPU porque usa o Ollama). Opções em `Job.params_json`
+  (`{"texts": bool, "cover": bool}`, coluna nova). Resultado em `Clip.post_json`: `tiktok {caption, hashtags}`,
+  `reels {caption, hashtags}`, `shorts {title, description, hashtags}` + `cover_t`, `cover_at`, `model`.
+  Gerar/editar o pacote **não** muda o status do corte (o MP4 continua válido). Editar texto = `PUT /clips/{id}/post`.
+- **Textos**: o mesmo modelo da análise (qwen2.5:7b), com JSON schema próprio (`ollama_chat(schema=...)`); 1 retentativa
+  com temperatura menor se o JSON vier inválido. Normalização no backend: limites (TikTok 300, Reels 600, título do
+  Shorts 100), hashtags sem acento/espaço/repetidas (TikTok 5, Reels 8, Shorts 3 + `#Shorts` fixa no texto final).
+  Medido no projeto GTA (10 cortes): ~20 s por corte com a capa. O 7B às vezes inventa hashtag (ex.: "clonadore") —
+  por isso tudo é editável no app.
+- **Capa**: reaproveita o plano de render (`render_plan`, extraído do `handle_render`): o quadro sai com o mesmo
+  enquadramento do MP4, mas sem legenda. Para os modos que seguem rosto, usa `reframer.frame_crop`; para os modos
+  só com filtros (centro, borrado, gameplay), usa o `video_filter` sem o `.ass`. 8 candidatos (1 por faixa do corte, longe de trocas de cena), cada
+  um com nota de rosto pelo `faces.json` (tamanho × confiança × de frente, penaliza boca escancarada, só rostos dentro
+  do crop) e nitidez (variância do Laplaciano); nota = 0,65 rosto + 0,35 nitidez (sem rostos: só nitidez).
+  `cover-titulo.jpg` = mesma imagem + título (ASS próprio, 120 px, terço de baixo).
+- **Exportar**: `GET /projects/{id}/export.zip` monta o zip na hora em `data/tmp/` (MP4/JPG sem compressão → 600 MB
+  em ~3 s) e apaga depois de enviar. Só entram cortes ativos com MP4; `textos.txt` avisa quantos ficaram de fora.
+  `textos.csv` tem BOM UTF-8 para o Excel abrir os acentos certo.
+
+

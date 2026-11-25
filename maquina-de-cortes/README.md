@@ -76,6 +76,8 @@ Para **fechar**, volte ao Terminal e aperte `Ctrl` + `C`. Para abrir de novo out
 5. Aparece a lista de **Cortes sugeridos**, do melhor para o pior. Clique em um para assistir ao trecho.
 6. **Editar** abre o editor, onde você ajusta o início e o fim, a legenda, o enquadramento e o título.
 7. **Renderizar** (ou **Renderizar todos**) gera os MP4. Depois é só **Baixar** ou **Abrir pasta**.
+8. **Pacote para postar** faz a IA escrever legenda e hashtags para TikTok, Reels e Shorts (título + descrição) e escolher a capa de cada corte: o quadro mais nítido com rosto, numa versão limpa e outra com o título. Em cada corte, **Postar** mostra os textos (dá para editar) com um botão **Copiar** por plataforma.
+9. **Exportar tudo (.zip)** baixa os MP4 renderizados + as capas + `textos.csv` (abre no Excel/Planilhas) + `textos.txt` (para copiar e colar). O app não posta sozinho em nenhuma rede.
 
 > Também dá para usar um vídeo que já está no computador: **Projetos → Novo projeto → Enviar arquivo** (ou **Caminho local**, que não copia o arquivo).
 >

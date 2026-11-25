@@ -6,14 +6,15 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 from sqlmodel import Session, col, select
 
 from ..config import get_settings
 from ..db import get_session
-from ..models import CaptionStyle, Clip, Job, Project, now
+from ..models import CLIP_JOB_TYPES, CaptionStyle, Clip, Job, Project, now
 from ..project_ops import options_of
 from ..queue import active_job_for, enqueue
-from ..schemas import ApplyTemplate, CaptionStyleIn, CaptionStyleUpdate, ClipCreate, ClipUpdate
+from ..schemas import ApplyTemplate, CaptionStyleIn, CaptionStyleUpdate, ClipCreate, ClipUpdate, PostPackRequest, PostTexts
 from ..services.highlighter import Words, first_sentence
 
 router = APIRouter(tags=["clips"])
@@ -106,7 +107,7 @@ def patch_clip(cid: int, body: ClipUpdate, session: Session = Depends(get_sessio
 @router.post("/clips/{cid}/duplicate", response_model=Clip)
 def duplicate_clip(cid: int, session: Session = Depends(get_session)) -> Clip:
     c = _clip(session, cid)
-    data = c.model_dump(exclude={"id", "created_at", "updated_at", "output_path", "status", "origin"})
+    data = c.model_dump(exclude={"id", "created_at", "updated_at", "output_path", "status", "origin", "post_json"})
     dup = Clip(**data, status="edited", origin="manual")
     dup.title = f"{c.title} (cópia)"[:200]
     session.add(dup)
@@ -117,7 +118,7 @@ def duplicate_clip(cid: int, session: Session = Depends(get_session)) -> Clip:
 
 @router.delete("/clips/{cid}")
 def delete_clip(cid: int, session: Session = Depends(get_session)) -> dict:
-    for j in session.exec(select(Job).where(Job.type == "render", Job.ref_id == cid)).all():
+    for j in session.exec(select(Job).where(col(Job.type).in_(CLIP_JOB_TYPES), Job.ref_id == cid)).all():
         session.delete(j)  # um render em andamento é interrompido pelo worker
     session.delete(_clip(session, cid))
     session.commit()
@@ -162,6 +163,118 @@ def clip_file(cid: int, download: bool = False, session: Session = Depends(get_s
         raise HTTPException(404, "Este corte ainda não foi renderizado")
     return FileResponse(path, media_type="video/mp4", filename=path.name if download else None,
                         content_disposition_type="attachment" if download else "inline")
+
+
+# --- Pacote para postar (textos + capa + .zip) ------------------------------------------
+def _clip_dir(c: Clip) -> Path:
+    return get_settings().project_dir(c.project_id) / "clips" / str(c.id)
+
+
+def _enqueue_post_pack(session: Session, c: Clip, texts: bool, cover: bool) -> Job | None:
+    if not (texts or cover):
+        return None
+    return active_job_for(session, "post_pack", c.id) or enqueue(  # type: ignore[arg-type]
+        session, "post_pack", c.id, params={"texts": texts, "cover": cover})  # type: ignore[arg-type]
+
+
+@router.post("/clips/{cid}/post-pack", response_model=Job)
+def post_pack_clip(cid: int, body: PostPackRequest, session: Session = Depends(get_session)) -> Job:
+    """(Re)gera os textos por plataforma e/ou a capa de um corte."""
+    c = _clip(session, cid)
+    if c.status == "discarded":
+        raise HTTPException(409, "Restaure o corte antes de gerar o pacote")
+    job = _enqueue_post_pack(session, c, body.texts, body.cover)
+    if job is None:
+        raise HTTPException(422, "Escolha textos e/ou capa")
+    return job
+
+
+@router.post("/projects/{pid}/post-pack", response_model=list[Job])
+def post_pack_project(pid: int, body: PostPackRequest, session: Session = Depends(get_session)) -> list[Job]:
+    """Pacote para todos os cortes ativos; com only_missing, só o que ainda falta (textos ou capa)."""
+    from ..services import postpack
+
+    _project(session, pid)
+    clips = session.exec(select(Clip).where(Clip.project_id == pid, Clip.status != "discarded")
+                         .order_by(col(Clip.score).desc())).all()
+    jobs = []
+    for c in clips:
+        texts = body.texts and not (body.only_missing and postpack.has_texts(postpack.load_post(c.post_json)))
+        cover = body.cover and not (body.only_missing and (_clip_dir(c) / "cover.jpg").exists())
+        j = _enqueue_post_pack(session, c, texts, cover)
+        if j:
+            jobs.append(j)
+    if not jobs:
+        raise HTTPException(409, "Todos os cortes ativos já têm textos e capa")
+    for j in jobs:
+        session.refresh(j)
+    return jobs
+
+
+@router.put("/clips/{cid}/post", response_model=Clip)
+def put_post_texts(cid: int, body: PostTexts, session: Session = Depends(get_session)) -> Clip:
+    """Edição manual dos textos (não mexe no status do corte: o MP4 continua valendo)."""
+    from ..services import postpack
+
+    c = _clip(session, cid)
+    data = body.model_dump()
+    try:
+        texts = postpack.normalize_post(data)
+    except ValueError as e:
+        raise HTTPException(422, "Preencha pelo menos uma legenda ou o título do Shorts") from e
+    cur = postpack.load_post(c.post_json)
+    cur.update(texts, edited_at=now().isoformat())
+    c.post_json = json.dumps(cur, ensure_ascii=False)
+    c.updated_at = now()
+    session.add(c)
+    session.commit()
+    session.refresh(c)
+    return c
+
+
+@router.get("/clips/{cid}/cover")
+def clip_cover(cid: int, titled: bool = False, download: bool = False, session: Session = Depends(get_session)) -> FileResponse:
+    c = _clip(session, cid)
+    path = _clip_dir(c) / ("cover-titulo.jpg" if titled else "cover.jpg")
+    if not path.is_file():
+        raise HTTPException(404, "A capa deste corte ainda não foi gerada")
+    from ..services.renderer import slugify
+
+    name = f"{slugify(c.title or 'corte')}{'-com-titulo' if titled else ''}.jpg"
+    return FileResponse(path, media_type="image/jpeg", filename=name if download else None,
+                        content_disposition_type="attachment" if download else "inline",
+                        headers={"Cache-Control": "no-cache"})
+
+
+@router.get("/projects/{pid}/export.zip")
+def export_zip(pid: int, session: Session = Depends(get_session)) -> FileResponse:
+    """Exportar tudo: MP4s dos cortes ativos + capas + textos.csv + textos.txt."""
+    from ..services import postpack
+    from ..services.renderer import slugify
+
+    p = _project(session, pid)
+    clips = session.exec(select(Clip).where(Clip.project_id == pid, Clip.status != "discarded")
+                         .order_by(col(Clip.score).desc(), col(Clip.start_s))).all()
+    items, skipped, names = [], 0, set()
+    for c in clips:
+        mp4 = Path(c.output_path) if c.output_path else None
+        if not mp4 or not mp4.is_file():
+            skipped += 1
+            continue
+        name = mp4.name if mp4.name not in names else f"{mp4.stem}_{c.id}.mp4"
+        names.add(name)
+        cdir = _clip_dir(c)
+        items.append(postpack.ExportItem(mp4=mp4, name=name, score=c.score, duration_s=c.end_s - c.start_s,
+                                         title=c.title, post=postpack.load_post(c.post_json),
+                                         cover=cdir / "cover.jpg", cover_title=cdir / "cover-titulo.jpg"))
+    if not items:
+        raise HTTPException(409, "Nenhum corte renderizado para exportar — renderize os cortes primeiro")
+    tmp_dir = get_settings().data_dir / "tmp"
+    tmp_dir.mkdir(parents=True, exist_ok=True)
+    dest = tmp_dir / f"export-{pid}-{now().strftime('%Y%m%d%H%M%S%f')}.zip"
+    postpack.build_zip(dest, items, p.name, skipped)
+    return FileResponse(dest, media_type="application/zip", filename=f"{slugify(p.name, 60)}-cortes.zip",
+                        background=BackgroundTask(dest.unlink, missing_ok=True))
 
 
 # --- Estilos de legenda ------------------------------------------------------------
