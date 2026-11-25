@@ -33,7 +33,6 @@ Windows, macOS, requisitos, passo a passo com prints e solução de problemas: v
 |---|---|
 | [`maquina-de-cortes/`](maquina-de-cortes/) | o aplicativo (backend Python + interface React) |
 | [`MAQUINA_DE_CORTES.md`](MAQUINA_DE_CORTES.md) | especificação original do projeto |
-| [`ideias-de-novas-features.md`](ideias-de-novas-features.md) | roteiro de novas funções |
 | [`CHANGELOG.md`](CHANGELOG.md) | o que mudou em cada versão |
 
 Licença [MIT](LICENSE). Feito por [Gustavo Albuquerque](https://github.com/Gustavo-2514).

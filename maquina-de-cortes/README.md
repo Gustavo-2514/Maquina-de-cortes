@@ -635,7 +635,7 @@ maquina-de-cortes/
 
 - **Modo desenvolvimento** (recarga automática): `.venv/bin/python run.py --dev` → interface em http://localhost:5173.
 - **Testes:** `cd backend && ../.venv/bin/pytest` e `cd frontend && npm test`.
-- **Decisões de implementação e medições:** [`DECISIONS.md`](DECISIONS.md). Especificação original: [`../MAQUINA_DE_CORTES.md`](../MAQUINA_DE_CORTES.md). Ideias e roteiro: [`../ideias-de-novas-features.md`](../ideias-de-novas-features.md).
+- **Decisões de implementação e medições:** [`DECISIONS.md`](DECISIONS.md). Especificação original: [`../MAQUINA_DE_CORTES.md`](../MAQUINA_DE_CORTES.md).
 
 Contribuições são bem-vindas: abra uma *issue* para conversar sobre a ideia ou mande um *pull request*. Testes no Windows e no macOS ajudam muito.
 

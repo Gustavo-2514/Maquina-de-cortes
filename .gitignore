@@ -16,3 +16,6 @@
 !maquina-de-cortes/frontend/public/**
 # Prints das telas do app usados no README (sem conteúdo de cortes).
 !maquina-de-cortes/docs/img/**
+
+# Arquivo pessoal (roteiro), fica só no computador.
+ideias-de-novas-features.md
