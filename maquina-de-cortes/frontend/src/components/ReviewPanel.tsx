@@ -1,5 +1,6 @@
 import { CircleDollarSign, Loader2, ShieldCheck } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -78,6 +79,7 @@ export function ReviewDialog({ projectId, clip, onClose }: { projectId: number; 
   const m = model ?? settings?.review_model ?? models?.default_review ?? 'claude-opus-5-5'
   const visionModels = models?.models.filter((x) => x.vision) ?? []
   const current = visionModels.find((x) => x.ref === m)
+  const onlyClaude = !!models && visionModels.every((x) => x.provider === 'anthropic')
   const one = useClipReviewEstimate(clip?.id ?? 0, m, !!clip)
   const all = useReviewEstimate(projectId, m, !clip)
   const est = clip ? one.data : all.data
@@ -118,6 +120,15 @@ export function ReviewDialog({ projectId, clip, onClose }: { projectId: number; 
             ))}
           </NativeSelect>
         </label>
+        {onlyClaude && (
+          <p className="text-xs text-muted-foreground">
+            Para usar GPT, Gemini ou qualquer modelo do OpenRouter, salve a chave e adicione o modelo em{' '}
+            <Link to="/configuracoes" className="text-primary underline-offset-4 hover:underline" onClick={onClose}>
+              Configurações → IA paga
+            </Link>
+            . Só aparecem aqui modelos que aceitam imagens.
+          </p>
+        )}
         {(modelsError || estError) && (
           <p className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
             Não consegui calcular o custo{estError?.message ? ` (${estError.message})` : ''}. Se você acabou de atualizar o app,

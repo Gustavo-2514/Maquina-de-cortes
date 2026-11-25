@@ -1,5 +1,6 @@
 import { CircleDollarSign, Clock, Loader2, Sparkles } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
@@ -120,7 +121,7 @@ export function AnalysisDialog({ project, open, onClose }: { project: Project; o
           hint={
             paid
               ? `Paga: usa a sua chave do ${cost?.provider_label ?? 'provedor'}. O custo real aparece na Fila e no projeto ao terminar.`
-              : 'Roda no seu computador, sem custo. Outros modelos pagos (OpenRouter, OpenAI, Gemini…) entram em Configurações.'
+              : 'Roda no seu computador, sem custo.'
           }
         >
           <NativeSelect value={opts.llm} onChange={(e) => set('llm', e.target.value)}>
@@ -138,6 +139,15 @@ export function AnalysisDialog({ project, open, onClose }: { project: Project; o
             ))}
           </NativeSelect>
         </Field>
+        {est && est.ai.models.every((m) => m.provider === 'anthropic') && (
+          <p className="-mt-2 text-xs text-muted-foreground">
+            Para usar GPT, Gemini ou qualquer modelo do OpenRouter, salve a chave e adicione o modelo em{' '}
+            <Link to="/configuracoes" className="text-primary underline-offset-4 hover:underline" onClick={onClose}>
+              Configurações → IA paga
+            </Link>
+            .
+          </p>
+        )}
         {paid && cost && (
           <div className="rounded-md border border-warning/40 bg-warning/5 p-3 text-xs">
             <div className="mb-1 flex items-center gap-1.5 text-sm font-medium">
