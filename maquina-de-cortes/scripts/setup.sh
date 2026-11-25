@@ -144,3 +144,4 @@ step "5/5 Diagnóstico"
 .venv/bin/python run.py --diagnostico || true
 
 printf '\n%sPronto!%s Para abrir o app:  %sscripts/start.sh%s   (abre http://localhost:8000 no navegador)\n' "$G$B" "$N" "$B" "$N"
+printf 'Quer conferir quais modelos de IA combinam com o seu computador?  %sscripts/sugerir-modelos.sh%s\n' "$B" "$N"
