@@ -1,0 +1,55 @@
+# Changelog
+
+[Português](CHANGELOG.md) · **English**
+
+All notable changes to this project are recorded here.
+
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
+and the project uses [semantic versioning](https://semver.org/).
+
+> The Portuguese [`CHANGELOG.md`](CHANGELOG.md) is the source of truth; this file mirrors it.
+
+## [Unreleased]
+
+### Added
+
+- Contribution guide (`CONTRIBUTING.md`), Conventional Commits standard enforced by a hook
+  (`.githooks/commit-msg`), commit message template (`.gitmessage`) and pull request template.
+- English versions of all Markdown documents (`*.en.md`).
+
+## [0.1.0] - 2026-11-25
+
+First public release of **Máquina de Cortes**.
+
+### Added
+
+- **Downloads** from links (YouTube, Twitch, TikTok, Instagram, X and others, via yt-dlp): queue, real-time progress,
+  cancel, resume after restart, playlists, quality selection and MP3 audio.
+- **Projects** from a download, a file upload or a local path.
+- Word-level **transcription** with Whisper (faster-whisper), on the NVIDIA GPU or the CPU, with manual word
+  correction.
+- **Local AI analysis** (Ollama + Qwen 2.5): picks the best moments, gives a viral-potential score and explains why.
+  Minimum and maximum duration per clip (default 60–90 s) and extra instructions for the AI.
+- **Time estimate** for the analysis before it starts, based on the hardware.
+- **9:16 framing**: follow face (YuNet), speaker in the center (lip reading with MediaPipe), webcam + game,
+  split screen, full frame with blurred background, center and manual, with camera-cut detection (PySceneDetect).
+- **Templates per video type**: General, Gameplay, Podcast and Debate.
+- **Animated captions** in 7 styles (Hormozi, Clean, Neon, Karaoke, Impact, Minimal and Yellow), adjustable per clip.
+- **Editor** with vertical preview, timeline with waveform, clickable transcript, undo/redo,
+  autosave and keyboard shortcuts.
+- **Render** with NVENC (or x264), audio normalized to −14 LUFS and "Render all".
+- **Posting pack**: title, caption and hashtags for TikTok, Reels and Shorts, automatic cover and
+  "Export all (.zip)" with MP4s, covers, `textos.csv` and `textos.txt`.
+- **Optional paid AI** via API key (Claude, OpenRouter, OpenAI, Gemini, DeepSeek, xAI, Groq, Mistral or any
+  OpenAI-compatible API) for the analysis and for the **visual review** of clips, always with an estimated cost before
+  and the actual cost after.
+- **Settings** with system diagnostics, model selection, storage (temporary file cleanup),
+  yt-dlp updates and `cookies.txt`.
+- **Installers** without sudo for Linux (`scripts/setup.sh`), plus Windows (`setup.ps1`) and macOS (untested).
+- **`scripts/sugerir-modelos`**: suggests the ideal transcription and AI models for each person's computer and,
+  with `--aplicar`, configures the app and downloads the model.
+- Full README with a beginner-friendly walkthrough, screenshots and an explanation of the models.
+- MIT license.
+
+[Unreleased]: https://github.com/Gustavo-2514/ai-studio/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Gustavo-2514/ai-studio/releases/tag/v0.1.0

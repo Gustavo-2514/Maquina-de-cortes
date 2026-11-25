@@ -1,5 +1,7 @@
 # Changelog
 
+**Português** · [English](CHANGELOG.en.md)
+
 Todas as mudanças importantes deste projeto ficam registradas aqui.
 
 O formato segue o [Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/)
@@ -11,6 +13,7 @@ e o projeto usa [versionamento semântico](https://semver.org/lang/pt-BR/).
 
 - Guia de contribuição (`CONTRIBUTING.md`), padrão de commits Conventional Commits com validação por hook
   (`.githooks/commit-msg`), modelo de mensagem (`.gitmessage`) e modelo de pull request.
+- Versões em inglês de todos os documentos Markdown (`*.en.md`).
 
 ## [0.1.0] - 2026-11-25
 

@@ -1,5 +1,7 @@
 # Como contribuir
 
+**Português** · [English](CONTRIBUTING.en.md)
+
 Obrigado pelo interesse em melhorar a **Máquina de Cortes**! Este guia explica como reportar problemas, sugerir ideias e
 enviar código.
 

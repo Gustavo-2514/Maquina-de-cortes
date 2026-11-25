@@ -1,5 +1,7 @@
 # Decisões
 
+**Português** · [English](DECISIONS.en.md)
+
 Registro de escolhas onde a especificação era ambígua ou o ambiente exigiu adaptação.
 
 ## Fase 0

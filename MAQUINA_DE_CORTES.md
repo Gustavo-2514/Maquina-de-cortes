@@ -1,5 +1,7 @@
 # Máquina de Cortes Local — Especificação do Projeto
 
+**Português** · [English](MAQUINA_DE_CORTES.en.md)
+
 > **Para o Claude Code:** este documento é a especificação completa do projeto. Construa **fase por fase** (seção 12), na ordem. Ao fim de cada fase, rode o projeto, confira os critérios de aceite e só então avance. Se algo aqui estiver ambíguo, escolha a opção mais simples que funcione e anote a decisão em `DECISIONS.md`. Antes de começar, pergunte ao usuário: **sistema operacional** (Windows/Linux/macOS) e **se tem placa NVIDIA (modelo/VRAM)**. O código deve funcionar com e sem GPU.
 
 ---

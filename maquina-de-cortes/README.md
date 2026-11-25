@@ -4,6 +4,8 @@
 
 # Máquina de Cortes ✂️
 
+**Português** · [English](README.en.md)
+
 **Vídeo longo entra, cortes virais saem.**
 
 Transforma podcasts, lives, aulas e gameplays em **cortes verticais (9:16) prontos para TikTok, Reels e Shorts**,
