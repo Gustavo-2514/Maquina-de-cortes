@@ -8,7 +8,7 @@
 
 **Vídeo longo entra, cortes virais saem.**
 
-Transforma podcasts, lives, aulas e gameplays em cortes verticais para TikTok, Reels e Shorts,
+Transforma podcasts, lives, videos e gameplays em cortes verticais para TikTok, Reels e Shorts,
 com legenda animada e enquadramento automático. Roda no seu computador, de graça e sem mandar seus vídeos para a nuvem.
 
 ### 👉 [Guia completo: instalação, uso e modelos de IA](maquina-de-cortes/README.md)
