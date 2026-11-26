@@ -25,6 +25,8 @@ e o projeto usa [versionamento semântico](https://semver.org/lang/pt-BR/).
 - Acabamento de interface seguindo as Web Interface Guidelines da Vercel: link "Pular para o conteúdo", microinterações
   em botões, cards e links, entrada única do hero, pausa no vídeo de fundo, mensagens de erro que dizem o que fazer
   e barra lateral só com ícones em telas estreitas.
+- Os cards de template (Geral, Gameplay, Podcast e Debate) nas janelas "Configurar análise" e "Renderizar todos"
+  agora têm capas ilustradas que mostram o vídeo original virando o corte vertical.
 
 ## [0.1.0] - 2026-11-25
 

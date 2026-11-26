@@ -5,26 +5,12 @@ import { cn } from '@/lib/utils'
 
 const ICONS: Record<string, typeof Mic> = { geral: Sparkles, gameplay: Gamepad2, podcast: Mic, debate: Users }
 
-/** Miniatura do layout 9:16 de cada template. */
-function LayoutSketch({ k }: { k: string }) {
-  const box = 'rounded-[2px] bg-muted-foreground/40'
-  return (
-    <div className="flex h-12 w-[27px] shrink-0 flex-col gap-[2px] rounded-sm border border-muted-foreground/40 p-[2px]">
-      {k === 'gameplay' && (
-        <>
-          <div className={cn(box, 'h-[40%] bg-primary/60')} />
-          <div className={cn(box, 'flex-1')} />
-        </>
-      )}
-      {k === 'debate' && (
-        <>
-          <div className={cn(box, 'h-1/2 bg-primary/60')} />
-          <div className={cn(box, 'h-1/2 bg-primary/30')} />
-        </>
-      )}
-      {(k === 'podcast' || k === 'geral') && <div className={cn(box, 'flex-1', k === 'podcast' && 'bg-primary/60')} />}
-    </div>
-  )
+/** Capa ilustrada de cada template (geradas no Higgsfield, em public/templates/). */
+const COVERS: Record<string, string> = {
+  geral: '/templates/geral.webp',
+  gameplay: '/templates/gameplay.webp',
+  podcast: '/templates/podcast.webp',
+  debate: '/templates/debate.webp',
 }
 
 export function TemplatePicker({ value, onChange }: { value: string; onChange: (t: Template) => void }) {
@@ -42,16 +28,25 @@ export function TemplatePicker({ value, onChange }: { value: string; onChange: (
             aria-checked={value === t.key}
             onClick={() => onChange(t)}
             className={cn(
-              'flex gap-2.5 rounded-lg border p-2.5 text-left transition-colors hover:border-primary/50',
-              value === t.key && 'border-primary bg-primary/5 ring-1 ring-primary/40',
+              'group flex flex-col overflow-hidden rounded-xl border bg-card text-left transition-colors hover:border-primary/50',
+              value === t.key && 'border-primary ring-1 ring-primary/40',
             )}
           >
-            <LayoutSketch k={t.key} />
-            <span className="min-w-0">
+            <div className="aspect-video w-full overflow-hidden bg-muted">
+              {COVERS[t.key] && (
+                <img
+                  src={COVERS[t.key]}
+                  alt=""
+                  loading="lazy"
+                  className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                />
+              )}
+            </div>
+            <span className="min-w-0 p-2.5">
               <span className="flex items-center gap-1.5 text-sm font-medium">
                 <Icon className="size-3.5" /> {t.name}
               </span>
-              <span className="block text-[11px] leading-snug text-muted-foreground">{t.description}</span>
+              <span className="mt-0.5 block text-[11px] leading-snug text-muted-foreground">{t.description}</span>
             </span>
           </button>
         )

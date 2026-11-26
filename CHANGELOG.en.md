@@ -27,6 +27,8 @@ and the project uses [semantic versioning](https://semver.org/).
 - Interface polish following Vercel's Web Interface Guidelines: "skip to content" link, micro-interactions on
   buttons, cards and links, a single hero entrance, pause control on the background video, error messages that say
   what to do, and an icon-only sidebar on narrow screens.
+- Template cards (General, Gameplay, Podcast and Debate) in the "Configure analysis" and "Render all" windows
+  now have illustrated covers showing the original video turning into the vertical clip.
 
 ## [0.1.0] - 2026-11-25
 
