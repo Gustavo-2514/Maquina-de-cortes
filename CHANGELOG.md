@@ -14,6 +14,8 @@ e o projeto usa [versionamento semântico](https://semver.org/lang/pt-BR/).
 - Guia de contribuição (`CONTRIBUTING.md`), padrão de commits Conventional Commits com validação por hook
   (`.githooks/commit-msg`), modelo de mensagem (`.gitmessage`) e modelo de pull request.
 - Versões em inglês de todos os documentos Markdown (`*.en.md`).
+- Escolha da qualidade do download (melhor, 1080p ou 720p) direto no Início, antes de colar o link.
+  A última escolha fica salva e vale também na tela de Downloads.
 
 ## [0.1.0] - 2026-11-25
 

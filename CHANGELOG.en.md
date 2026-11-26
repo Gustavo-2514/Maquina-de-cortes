@@ -16,6 +16,8 @@ and the project uses [semantic versioning](https://semver.org/).
 - Contribution guide (`CONTRIBUTING.md`), Conventional Commits standard enforced by a hook
   (`.githooks/commit-msg`), commit message template (`.gitmessage`) and pull request template.
 - English versions of all Markdown documents (`*.en.md`).
+- Download quality choice (best, 1080p or 720p) right on the Home screen, before pasting the link.
+  The last choice is remembered and also applies on the Downloads screen.
 
 ## [0.1.0] - 2026-11-25
 

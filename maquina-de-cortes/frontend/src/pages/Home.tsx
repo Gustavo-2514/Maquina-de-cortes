@@ -8,8 +8,9 @@ import { uploadProject, useProjectActions, useProjects } from '@/api/projects'
 import { ProjectStatusBadge } from '@/components/ProjectProgress'
 import { ProjectThumb } from '@/components/ProjectThumb'
 import { Button } from '@/components/ui/button'
-import { Progress } from '@/components/ui/input'
-import { formatDuration, formatRelative } from '@/lib/format'
+import type { FormatChoice } from '@/api/types'
+import { NativeSelect, Progress } from '@/components/ui/input'
+import { FORMAT_LABELS, formatDuration, formatRelative } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 const STEPS = [
@@ -49,8 +50,19 @@ function HeroVideo() {
   )
 }
 
+// este fluxo sempre vira cortes: só formatos com vídeo
+const VIDEO_FORMATS = ['best', '1080p', '720p'] as const satisfies readonly FormatChoice[]
+type VideoFormat = (typeof VIDEO_FORMATS)[number]
+const QUALITY_KEY = 'mdc.downloadQuality'
+
+function loadQuality(): VideoFormat {
+  const v = localStorage.getItem(QUALITY_KEY)
+  return (VIDEO_FORMATS as readonly string[]).includes(v ?? '') ? (v as VideoFormat) : 'best'
+}
+
 function StartBox() {
   const [link, setLink] = useState('')
+  const [quality, setQuality] = useState<VideoFormat>(loadQuality)
   const [busy, setBusy] = useState(false)
   const [uploadPct, setUploadPct] = useState<number | null>(null)
   const [dragging, setDragging] = useState(false)
@@ -76,7 +88,7 @@ function StartBox() {
       await create.mutateAsync([
         {
           url,
-          format_choice: 'best',
+          format_choice: quality,
           send_to_project: true,
           title: info.title,
           uploader: info.uploader,
@@ -145,6 +157,23 @@ function StartBox() {
             autoFocus
             className="h-11 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground focus-visible:outline-none"
           />
+          <NativeSelect
+            value={quality}
+            onChange={(e) => {
+              const v = e.target.value as VideoFormat
+              setQuality(v)
+              localStorage.setItem(QUALITY_KEY, v)
+            }}
+            aria-label="Qualidade do download"
+            title="Qualidade do download. Menor qualidade baixa mais rápido e ocupa menos espaço."
+            className="h-11 w-auto shrink-0"
+          >
+            {VIDEO_FORMATS.map((f) => (
+              <option key={f} value={f}>
+                {f === 'best' ? 'Melhor qualidade' : FORMAT_LABELS[f]}
+              </option>
+            ))}
+          </NativeSelect>
           <Button type="submit" size="lg" disabled={busy || !link.trim()} className="font-semibold">
             {busy ? <Loader2 className="animate-spin" /> : <Scissors />}
             Criar cortes

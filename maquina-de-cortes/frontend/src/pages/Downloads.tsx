@@ -71,7 +71,11 @@ function AnalyzePanel() {
   const [text, setText] = useState(() => params.get('links') ?? '')
   const [results, setResults] = useState<Analyzed[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set())
-  const [format, setFormat] = useState<FormatChoice>('best')
+  // mesma escolha do Início (playlists chegam por lá)
+  const [format, setFormat] = useState<FormatChoice>(() => {
+    const v = localStorage.getItem('mdc.downloadQuality')
+    return v && v in FORMAT_LABELS ? (v as FormatChoice) : 'best'
+  })
   const [sendToProject, setSendToProject] = useState(false)
   const { create } = useDownloadActions()
 
@@ -197,7 +201,11 @@ function AnalyzePanel() {
             <div className="sticky bottom-0 flex flex-wrap items-center gap-3 rounded-lg border bg-card/95 p-3 backdrop-blur">
               <label className="flex items-center gap-2 text-sm">
                 Qualidade
-                <NativeSelect value={format} onChange={(e) => setFormat(e.target.value as FormatChoice)} className="w-44">
+                <NativeSelect value={format} onChange={(e) => {
+                    const v = e.target.value as FormatChoice
+                    setFormat(v)
+                    localStorage.setItem('mdc.downloadQuality', v)
+                  }} className="w-44">
                   {Object.entries(FORMAT_LABELS).map(([v, l]) => (
                     <option key={v} value={v}>
                       {l}
