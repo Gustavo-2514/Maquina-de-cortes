@@ -16,6 +16,10 @@ e o projeto usa [versionamento semântico](https://semver.org/lang/pt-BR/).
 - Versões em inglês de todos os documentos Markdown (`*.en.md`).
 - Escolha da qualidade do download (melhor, 1080p ou 720p) direto no Início, antes de colar o link.
   A última escolha fica salva e vale também na tela de Downloads.
+- Renderização como etapa do pipeline: ao clicar em **Criar cortes** no Início, uma janela pergunta o tipo de
+  vídeo (Geral, Gameplay, Podcast, Debate) e se já deve renderizar os cortes. Com a opção marcada, o projeto segue
+  sozinho até os MP4 finais (etapa "Renderizar cortes") e só fica "Pronto" quando o último render termina.
+  A mesma opção existe na configuração da análise e na tela de Downloads.
 
 ### Alterado
 

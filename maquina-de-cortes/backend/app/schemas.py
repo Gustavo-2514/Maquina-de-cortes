@@ -22,6 +22,8 @@ class DownloadCreate(BaseModel):
     uploader: str = ""
     duration_s: float | None = None
     thumbnail_url: str = ""
+    # opções da análise do projeto criado ao terminar (send_to_project); None = padrões
+    analyze: AnalysisOptions | None = None
 
 
 class DownloadBatch(BaseModel):
@@ -42,6 +44,7 @@ class AnalysisOptions(BaseModel):
     reframe_mode: Literal["auto", "speaker", "center", "blur_fit", "split", "gameplay"] = "auto"
     template: str = "geral"  # geral | gameplay | podcast | debate (services/templates.py)
     llm: str = "ollama"  # "ollama" (local, grátis) ou a ref de um modelo pago (services/ai.py)
+    auto_render: bool = False  # ao terminar a análise, já renderiza todos os cortes (etapa "render")
 
 
 class ProjectCreate(BaseModel):

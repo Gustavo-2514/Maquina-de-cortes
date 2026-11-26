@@ -40,6 +40,7 @@ export const DEFAULT_ANALYSIS: AnalysisOptions = {
   reframe_mode: 'auto',
   template: 'geral',
   llm: 'ollama',
+  auto_render: false,
 }
 
 export function parseOptions(p: Project): AnalysisOptions {

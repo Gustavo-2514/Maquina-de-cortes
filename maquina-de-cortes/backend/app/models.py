@@ -33,6 +33,7 @@ class Download(SQLModel, table=True):
     error: str = ""
     error_detail: str = ""
     send_to_project: bool = False
+    analysis_json: str = ""  # AnalysisOptions (só os campos escolhidos) para o projeto criado ao terminar
     project_id: int | None = None
     created_at: datetime = Field(default_factory=now)
     updated_at: datetime = Field(default_factory=now, index=True)

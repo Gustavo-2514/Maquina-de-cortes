@@ -45,6 +45,11 @@ export function useServerEvents() {
         qc.invalidateQueries({ queryKey: clipsKey(p.id) })
       }
       if (p.stage === 'analyze' && prev?.stage !== 'analyze') qc.invalidateQueries({ queryKey: transcriptKey(p.id) })
+      // análise terminou e os renders começaram: os cortes novos já existem
+      if (p.stage === 'render' && prev?.stage !== 'render') {
+        qc.invalidateQueries({ queryKey: transcriptKey(p.id) })
+        qc.invalidateQueries({ queryKey: clipsKey(p.id) })
+      }
     })
     es.addEventListener('clip.update', (e) => {
       const c = JSON.parse((e as MessageEvent).data) as Clip

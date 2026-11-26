@@ -75,7 +75,7 @@ export interface PlaylistInfo {
 export type LinkInfo = VideoInfo | PlaylistInfo
 
 export type ProjectStatus = 'new' | 'processing' | 'ready' | 'error'
-export type ProjectStage = 'probe' | 'proxy' | 'transcribe' | 'analyze' | 'done'
+export type ProjectStage = 'probe' | 'proxy' | 'transcribe' | 'analyze' | 'render' | 'done'
 
 export interface Project {
   id: number
@@ -114,6 +114,8 @@ export interface AnalysisOptions {
   template: string
   /** 'ollama' (local, grátis) ou a ref de um modelo pago ('claude-opus-5-5', 'openrouter:openai/gpt-…') */
   llm: string
+  /** ao terminar a análise, já renderiza todos os cortes (etapa extra do pipeline) */
+  auto_render: boolean
 }
 
 export interface Template {

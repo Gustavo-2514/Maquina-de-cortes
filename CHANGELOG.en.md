@@ -18,6 +18,10 @@ and the project uses [semantic versioning](https://semver.org/).
 - English versions of all Markdown documents (`*.en.md`).
 - Download quality choice (best, 1080p or 720p) right on the Home screen, before pasting the link.
   The last choice is remembered and also applies on the Downloads screen.
+- Rendering as a pipeline stage: clicking **Criar cortes** on Home opens a dialog asking the video type
+  (General, Gameplay, Podcast, Debate) and whether to render the clips right away. When enabled, the project runs
+  on its own until the final MP4s ("Render clips" stage) and only becomes "Ready" when the last render finishes.
+  The same option is available in the analysis settings and on the Downloads screen.
 
 ### Changed
 

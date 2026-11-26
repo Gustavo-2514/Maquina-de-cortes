@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, post } from './client'
-import type { Download, FormatChoice, LinkInfo } from './types'
+import type { AnalysisOptions, Download, FormatChoice, LinkInfo } from './types'
 
 export const downloadsKey = ['downloads'] as const
 
@@ -17,6 +17,8 @@ export interface NewDownload {
   uploader?: string
   duration_s?: number | null
   thumbnail_url?: string
+  /** opções da análise do projeto criado ao terminar (só com send_to_project) */
+  analyze?: Partial<AnalysisOptions>
 }
 
 /** Insere/atualiza um download na lista em cache (usado pela resposta da API e pelo SSE). */

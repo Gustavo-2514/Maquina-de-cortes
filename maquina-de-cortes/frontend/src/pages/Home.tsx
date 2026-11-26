@@ -6,11 +6,13 @@ import { ApiError } from '@/api/client'
 import { fetchLinkInfo, useDownloadActions, useDownloads } from '@/api/downloads'
 import { uploadProject, useProjectActions, useProjects } from '@/api/projects'
 import { ProjectStatusBadge } from '@/components/ProjectProgress'
+import { CreateClipsDialog } from '@/components/CreateClipsDialog'
 import { ProjectThumb } from '@/components/ProjectThumb'
 import { Button } from '@/components/ui/button'
-import type { FormatChoice } from '@/api/types'
+import type { FormatChoice, VideoInfo } from '@/api/types'
 import { NativeSelect, Progress } from '@/components/ui/input'
 import { FORMAT_LABELS, formatDuration, formatRelative } from '@/lib/format'
+import type { StartPrefs } from '@/lib/startPrefs'
 import { cn } from '@/lib/utils'
 
 const STEPS = [
@@ -86,6 +88,8 @@ function StartBox() {
   const [link, setLink] = useState('')
   const [quality, setQuality] = useState<VideoFormat>(loadQuality)
   const [busy, setBusy] = useState(false)
+  // link já lido, esperando o tipo de conteúdo no diálogo
+  const [pending, setPending] = useState<{ url: string; info: VideoInfo } | null>(null)
   const [uploadPct, setUploadPct] = useState<number | null>(null)
   const [dragging, setDragging] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -107,6 +111,20 @@ function StartBox() {
         navigate(`/downloads?links=${encodeURIComponent(url)}`)
         return
       }
+      setPending({ url, info })
+    } catch (e) {
+      toast.error(e instanceof ApiError ? e.message : 'Não consegui ler esse link', {
+        description: 'Confira se o vídeo é público. Na tela de Downloads dá para tentar baixar mesmo assim.',
+      })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function startDownload(prefs: StartPrefs) {
+    if (!pending) return
+    const { url, info } = pending
+    try {
       await create.mutateAsync([
         {
           url,
@@ -116,16 +134,18 @@ function StartBox() {
           uploader: info.uploader,
           duration_s: info.duration_s,
           thumbnail_url: info.thumbnail_url,
+          analyze: prefs,
         },
       ])
-      toast.success('Baixando o vídeo', { description: 'Depois ele é transcrito e analisado sozinho. Acompanhe abaixo.' })
-      setLink('')
-    } catch (e) {
-      toast.error(e instanceof ApiError ? e.message : 'Não consegui ler esse link', {
-        description: 'Confira se o vídeo é público. Na tela de Downloads dá para tentar baixar mesmo assim.',
+      toast.success('Baixando o vídeo', {
+        description: prefs.auto_render
+          ? 'Depois ele é transcrito, analisado e os cortes são renderizados sozinhos. Acompanhe abaixo.'
+          : 'Depois ele é transcrito e analisado sozinho. Acompanhe abaixo.',
       })
-    } finally {
-      setBusy(false)
+      setLink('')
+      setPending(null)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Falha ao criar o download')
     }
   }
 
@@ -229,6 +249,14 @@ function StartBox() {
           }}
         />
       </div>
+      {pending && (
+        <CreateClipsDialog
+          title={pending.info.title || pending.url}
+          busy={create.isPending}
+          onClose={() => setPending(null)}
+          onConfirm={startDownload}
+        />
+      )}
     </div>
   )
 }

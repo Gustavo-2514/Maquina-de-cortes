@@ -204,7 +204,7 @@ export default function ProjectPage() {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const { data: p, isLoading, error } = useProject(id)
-  const hasTranscript = !!p && (p.status === 'ready' || ['analyze', 'done'].includes(p.stage))
+  const hasTranscript = !!p && (p.status === 'ready' || ['analyze', 'render', 'done'].includes(p.stage))
   const proxyReady = hasTranscript || p?.stage === 'transcribe'
   const { data: transcript, isLoading: tLoading } = useTranscript(id, hasTranscript)
   const { rename, remove } = useProjectActions()
@@ -402,8 +402,8 @@ export default function ProjectPage() {
           <ClipsPanel
             projectId={p.id}
             duration={p.duration_s ?? 0}
-            enabled={p.status === 'ready' || (p.stage === 'done' && p.status !== 'new') || p.stage === 'analyze'}
-            analyzing={p.status === 'processing'}
+            enabled={p.status === 'ready' || (p.stage === 'done' && p.status !== 'new') || p.stage === 'analyze' || p.stage === 'render'}
+            analyzing={p.status === 'processing' && p.stage !== 'render'}
             playingId={playingId}
             selectedId={selected?.id ?? null}
             onPlay={playClip}
@@ -426,7 +426,11 @@ export default function ProjectPage() {
                 {p.status !== 'new' && <ProjectSteps p={p} />}
                 {p.status === 'error' && <ErrorBox p={p} />}
                 {p.status === 'processing' && (
-                  <p className="text-xs text-muted-foreground">{activeJobs.find((j) => j.status === 'running')?.message ?? 'Na fila…'}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {p.stage === 'render'
+                      ? 'Renderizando os cortes — acompanhe cada um na lista ao lado ou na Fila.'
+                      : (activeJobs.find((j) => j.status === 'running')?.message ?? 'Na fila…')}
+                  </p>
                 )}
               </CardContent>
             </Card>

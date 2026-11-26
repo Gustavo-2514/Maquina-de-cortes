@@ -12,7 +12,7 @@ from sqlmodel import Session, col, select
 from ..config import get_settings
 from ..db import get_session
 from ..models import CLIP_JOB_TYPES, CaptionStyle, Clip, Job, Project, now
-from ..project_ops import options_of
+from ..project_ops import enqueue_pending_renders, options_of
 from ..queue import active_job_for, enqueue
 from ..schemas import ApplyTemplate, CaptionStyleIn, CaptionStyleUpdate, ClipCreate, ClipUpdate, PostPackRequest, PostTexts, ReviewRequest, ReviewSubmit
 from ..services.highlighter import Words, first_sentence
@@ -143,14 +143,9 @@ def render_clip(cid: int, session: Session = Depends(get_session)) -> Job:
 def render_all(pid: int, only_pending: bool = True, session: Session = Depends(get_session)) -> list[Job]:
     """Renderiza os cortes não descartados (por padrão, só os que ainda não têm MP4 atualizado)."""
     _project(session, pid)
-    clips = session.exec(select(Clip).where(Clip.project_id == pid, Clip.status != "discarded")
-                         .order_by(col(Clip.score).desc())).all()
-    todo = [c for c in clips if not (only_pending and c.status == "rendered" and c.output_path and Path(c.output_path).exists())]
-    if not todo:
+    jobs = enqueue_pending_renders(session, pid, only_pending)
+    if not jobs:
         raise HTTPException(409, "Todos os cortes já estão renderizados")
-    jobs = [_enqueue_render(session, c) for c in todo]
-    for j in jobs:
-        session.refresh(j)  # commits seguidos expiram os anteriores (serializariam vazios)
     return jobs
 
 

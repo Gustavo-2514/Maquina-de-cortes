@@ -20,12 +20,14 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox, NativeSelect, Progress, Textarea } from '@/components/ui/input'
+import { StartOptions } from '@/components/StartOptions'
 import { ApiError } from '@/api/client'
 import { useProjectActions } from '@/api/projects'
 import { fetchLinkInfo, openFolder, useDownloadActions, useDownloads, type NewDownload } from '@/api/downloads'
 import type { Download, FormatChoice, LinkInfo } from '@/api/types'
 import { FORMAT_LABELS, formatBytes, formatDuration, formatRelative } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { loadStartPrefs } from '@/lib/startPrefs'
 
 // ---------------------------------------------------------------------------
 // Análise de links
@@ -77,6 +79,7 @@ function AnalyzePanel() {
     return v && v in FORMAT_LABELS ? (v as FormatChoice) : 'best'
   })
   const [sendToProject, setSendToProject] = useState(false)
+  const [prefs, setPrefs] = useState(loadStartPrefs)
   const { create } = useDownloadActions()
 
   const analyzing = results.some((r) => r.state === 'loading')
@@ -144,6 +147,7 @@ function AnalyzePanel() {
       url: c.url,
       format_choice: format,
       send_to_project: sendToProject,
+      analyze: sendToProject ? prefs : undefined,
       title: c.title === c.url ? '' : c.title,
       uploader: c.uploader,
       duration_s: c.duration_s,
@@ -220,6 +224,7 @@ function AnalyzePanel() {
                 <Checkbox checked={sendToProject} onChange={(e) => setSendToProject(e.target.checked)} disabled={format === 'audio_mp3'} />
                 Enviar para cortes após baixar
               </label>
+              {sendToProject && format !== 'audio_mp3' && <StartOptions value={prefs} onChange={setPrefs} className="basis-full" />}
               <div className="ml-auto flex items-center gap-2">
                 <Button variant="ghost" onClick={() => (setResults([]), setSelected(new Set()))}>
                   Limpar

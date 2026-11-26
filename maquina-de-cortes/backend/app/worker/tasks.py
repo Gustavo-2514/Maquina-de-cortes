@@ -20,7 +20,8 @@ from ..config import get_settings, load_user_settings
 from ..db import engine
 from ..errors import friendly
 from ..models import Clip, Download, Job, Project, now
-from ..project_ops import ProjectError, options_of, project_from_download, start_analysis
+from ..project_ops import (ProjectError, enqueue_pending_renders, options_from_download, options_of,
+                           project_from_download, start_analysis)
 from ..queue import enqueue
 from ..services import captions, downloader, hardware, highlighter, postpack, probe, proxy, reframer, renderer, transcriber
 from ..services.caption_styles import style_for_clip
@@ -141,8 +142,9 @@ def handle_download(ctx: JobContext) -> None:
         dl = s.get(Download, ctx.ref_id)
         if dl and dl.send_to_project and not dl.project_id:
             try:
-                p = project_from_download(s, dl, load_user_settings().default_language)
-                start_analysis(s, p)
+                lang = load_user_settings().default_language
+                p = project_from_download(s, dl, lang)
+                start_analysis(s, p, options_from_download(dl, lang))
                 log.info("download %s → projeto %s (análise enfileirada)", dl.id, p.id)
             except ProjectError as e:
                 log.warning("download %s não virou projeto: %s", dl.id, e)
@@ -434,8 +436,12 @@ def handle_analyze(ctx: JobContext) -> None:
                            score_breakdown_json=json.dumps(c["breakdown"], ensure_ascii=False),
                            reframe_mode=opts.reframe_mode, caption_overrides_json=overrides))
             s.commit()
+            renders = enqueue_pending_renders(s, ctx.ref_id) if opts.auto_render else []
 
-    _update_project(ctx.ref_id, status="ready", stage="done", progress=100)
+    if renders:  # etapa extra do pipeline: o projeto só fica "pronto" quando o último render terminar
+        _update_project(ctx.ref_id, status="processing", stage="render", progress=0)
+    else:
+        _update_project(ctx.ref_id, status="ready", stage="done", progress=100)
     cost = f" · Claude: US$ {meter.usd:.2f}".replace(".", ",") if meter is not None else ""
     ctx.report(100, f"{len(clips)} corte(s) sugerido(s){cost}", force=True)
 
@@ -558,7 +564,37 @@ def render_plan(clip: Clip, project: Project, all_words: list[dict], cdir: Path,
     return spec, track, mode
 
 
+def _advance_render_stage(project_id: int, current_job: int) -> None:
+    """Etapa "render" do pipeline: progresso = renders concluídos; sem nenhum pendente, o projeto fica pronto."""
+    with Session(engine) as s:
+        p = s.get(Project, project_id)
+        if p is None or p.stage != "render":
+            return  # render avulso, ou o projeto foi reanalisado no meio
+        clip_ids = list(s.exec(select(Clip.id).where(Clip.project_id == project_id, Clip.status != "discarded")).all())
+        pending = len(s.exec(select(Job.id).where(Job.type == "render", col(Job.ref_id).in_(clip_ids), Job.id != current_job,
+                                                  col(Job.status).in_(["queued", "running"]))).all())
+        if pending == 0:
+            p.status, p.stage, p.progress = "ready", "done", 100
+        else:
+            p.progress = round(100 * (len(clip_ids) - pending) / max(1, len(clip_ids)), 1)
+        p.updated_at = now()
+        s.add(p)
+        s.commit()
+
+
 def handle_render(ctx: JobContext) -> None:
+    project_id: int | None = None
+    try:
+        with Session(engine) as s:
+            clip = s.get(Clip, ctx.ref_id)
+            project_id = clip.project_id if clip else None
+        _render(ctx)
+    finally:
+        if project_id is not None and not ctx.interrupted:
+            _advance_render_stage(project_id, ctx.job_id)
+
+
+def _render(ctx: JobContext) -> None:
     with Session(engine) as s:
         clip = s.get(Clip, ctx.ref_id)
         if clip is None:

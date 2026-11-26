@@ -37,6 +37,7 @@ def _create(session: Session, item: DownloadCreate) -> Download:
     dl = Download(
         url=item.url.strip(), format_choice=item.format_choice, send_to_project=item.send_to_project,
         title=item.title, uploader=item.uploader, duration_s=item.duration_s, thumbnail_url=item.thumbnail_url,
+        analysis_json=item.analyze.model_dump_json(exclude_unset=True) if item.analyze else "",
     )
     session.add(dl)
     session.commit()

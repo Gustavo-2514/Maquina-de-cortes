@@ -305,3 +305,51 @@ def test_probe_error_marks_project(tmp_path):
         p = c.get(f"/api/projects/{p['id']}").json()
         assert p["status"] == "error" and p["error"]
         c.delete(f"/api/projects/{p['id']}")
+
+
+def test_auto_render_is_a_pipeline_stage(sample_video, monkeypatch):
+    """auto_render: análise → etapa "render" → projeto só fica pronto quando o último MP4 sai."""
+    monkeypatch.setattr(transcriber, "transcribe", _fake_transcribe)
+    monkeypatch.setattr(highlighter, "ollama_chat", _fake_llm)
+    with TestClient(app) as c:
+        p = c.post("/api/projects", json={"local_path": str(sample_video), "analyze": {
+            "language": "pt", "min_s": 5, "max_s": 10, "reframe_mode": "center", "auto_render": True}}).json()
+        for t in ("probe_proxy", "transcribe", "analyze"):
+            assert _run_next(t, p["id"]).status == "done"
+        p = c.get(f"/api/projects/{p['id']}").json()
+        assert p["status"] == "processing" and p["stage"] == "render"
+        clip = c.get(f"/api/projects/{p['id']}/clips").json()[0]
+
+        job = _run_next("render", clip["id"])
+        assert job.status == "done", job.error_detail
+        p = c.get(f"/api/projects/{p['id']}").json()
+        assert p["status"] == "ready" and p["stage"] == "done" and p["progress"] == 100
+        assert c.get(f"/api/clips/{clip['id']}").json()["status"] == "rendered"
+
+        # render avulso depois não mexe no estado do projeto
+        c.patch(f"/api/clips/{clip['id']}", json={"end_s": 7.0})
+        c.post(f"/api/clips/{clip['id']}/render")
+        assert _run_next("render", clip["id"]).status == "done"
+        assert c.get(f"/api/projects/{p['id']}").json()["status"] == "ready"
+        c.delete(f"/api/projects/{p['id']}")
+
+
+def test_download_carries_analysis_options(sample_video, monkeypatch):
+    """Tipo de conteúdo e auto_render escolhidos ao colar o link chegam ao projeto; idioma vem das Configurações."""
+    dest = get_settings().data_dir / "downloads" / "opcoes [xyz].mp4"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy(sample_video, dest)
+    monkeypatch.setattr(tasks.downloader, "download", lambda *a, **k: dest)
+    with TestClient(app) as c:
+        r = c.post("/api/downloads/batch", json={"items": [{"url": "http://opcoes", "send_to_project": True,
+                                                            "analyze": {"template": "gameplay", "reframe_mode": "gameplay",
+                                                                        "auto_render": True}}]})
+        assert r.status_code == 200, r.text
+        dl_id = r.json()[0]["id"]
+    assert _run_next("download", dl_id).status == "done"
+    with Session(engine) as s:
+        dl = s.get(Download, dl_id)
+        proj = s.get(Project, dl.project_id)  # type: ignore[union-attr, arg-type]
+        opts = json.loads(proj.settings_json)  # type: ignore[union-attr]
+    assert opts["template"] == "gameplay" and opts["reframe_mode"] == "gameplay" and opts["auto_render"] is True
+    assert opts["language"] == tasks.load_user_settings().default_language

@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
-import { Input, NativeSelect, Textarea } from '@/components/ui/input'
+import { Checkbox, Input, NativeSelect, Textarea } from '@/components/ui/input'
 import { useCaptionStyles } from '@/api/editor'
 import { TemplatePicker } from '@/components/TemplatePicker'
 import { parseAiCost, parseOptions, useEstimate, useProjectActions } from '@/api/projects'
@@ -12,6 +12,7 @@ import { useUserSettings } from '@/api/system'
 import { formatTokens, formatUsd } from '@/lib/format'
 import type { AnalysisOptions, CostEstimate, Project } from '@/api/types'
 import { LANGUAGES } from '@/lib/languages'
+import { loadStartPrefs } from '@/lib/startPrefs'
 
 /** [rótulo do provedor, modelos] na ordem em que o backend lista (Claude primeiro). */
 function groupByProvider(models: CostEstimate[]): [string, CostEstimate[]][] {
@@ -40,7 +41,10 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 }
 
 export function AnalysisDialog({ project, open, onClose }: { project: Project; open: boolean; onClose: () => void }) {
-  const [opts, setOpts] = useState<AnalysisOptions>(() => parseOptions(project))
+  // projeto novo (ex.: arquivo enviado): parte do tipo de conteúdo escolhido na tela inicial
+  const [opts, setOpts] = useState<AnalysisOptions>(() =>
+    project.status === 'new' && (project.settings_json || '{}') === '{}' ? { ...parseOptions(project), ...loadStartPrefs() } : parseOptions(project),
+  )
   const { analyze } = useProjectActions()
   const { data: est } = useEstimate(project.id, opts.language, open, opts.num_clips, opts.template)
   const { data: settings } = useUserSettings()
@@ -189,9 +193,18 @@ export function AnalysisDialog({ project, open, onClose }: { project: Project; o
           </div>
         )}
         <p className="rounded-md bg-muted/60 p-3 text-xs text-muted-foreground">
-          Etapas: preparar o vídeo → transcrever (Whisper) → a IA {paid ? `escolhida (${cost?.provider_label ?? 'paga'}, pela internet)` : 'local'} escolhe os trechos e dá nota. Etapas já feitas são
+          Etapas: preparar o vídeo → transcrever (Whisper) → a IA {paid ? `escolhida (${cost?.provider_label ?? 'paga'}, pela internet)` : 'local'} escolhe os trechos e dá nota{opts.auto_render ? ' → renderizar os MP4' : ''}. Etapas já feitas são
           reaproveitadas. Reanalisar substitui as sugestões da IA, mas mantém cortes editados e manuais.
         </p>
+        <label className="flex items-start gap-2.5 rounded-md border p-3">
+          <Checkbox checked={opts.auto_render} onChange={(e) => set('auto_render', e.target.checked)} className="mt-0.5" />
+          <span className="text-sm">
+            <span className="font-medium">Renderizar os cortes ao terminar</span>
+            <span className="block text-xs text-muted-foreground">
+              Os MP4 finais saem sozinhos depois da análise — bom para deixar rodando à noite. Dá para editar e renderizar de novo depois.
+            </span>
+          </span>
+        </label>
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose}>
             Cancelar

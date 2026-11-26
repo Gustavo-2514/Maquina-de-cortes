@@ -10,7 +10,7 @@ from sqlmodel import Session, col, select
 
 from .config import get_settings
 from .models import CLIP_JOB_TYPES, Clip, Download, Job, Project, now
-from .queue import cancel_job, enqueue
+from .queue import active_job_for, cancel_job, enqueue
 from .schemas import AnalysisOptions
 
 VIDEO_EXTS = {".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v", ".flv", ".ts", ".wmv", ".mpg", ".mpeg", ".3gp"}
@@ -70,6 +70,30 @@ def start_analysis(session: Session, project: Project, options: AnalysisOptions 
     session.add(project)
     session.commit()
     return enqueue(session, "probe_proxy", project.id, priority=1)  # type: ignore[arg-type]
+
+
+def enqueue_pending_renders(session: Session, project_id: int, only_pending: bool = True) -> list[Job]:
+    """Enfileira o render dos cortes não descartados (por nota), pulando os que já têm MP4 atualizado."""
+    clips = session.exec(select(Clip).where(Clip.project_id == project_id, Clip.status != "discarded")
+                         .order_by(col(Clip.score).desc())).all()
+    jobs = []
+    for c in clips:
+        if only_pending and c.status == "rendered" and c.output_path and Path(c.output_path).exists():
+            continue
+        jobs.append(active_job_for(session, "render", c.id) or enqueue(session, "render", c.id))  # type: ignore[arg-type]
+    for j in jobs:
+        session.refresh(j)  # commits seguidos expiram os anteriores (serializariam vazios)
+    return jobs
+
+
+def options_from_download(dl: Download, default_language: str) -> AnalysisOptions:
+    """Opções escolhidas ao colar o link; o idioma não informado vem das Configurações."""
+    data = json.loads(dl.analysis_json or "{}")
+    data.setdefault("language", default_language)
+    try:
+        return AnalysisOptions.model_validate(data)
+    except ValueError:
+        return AnalysisOptions(language=default_language)
 
 
 def active_pipeline_jobs(session: Session, project_id: int) -> list[Job]:
