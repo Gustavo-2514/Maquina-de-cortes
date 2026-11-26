@@ -317,6 +317,8 @@ The app shows the **estimated time** before starting. Click **Analisar** (Analyz
 
 **7. Render.** Click **Renderizar** (Render) on a clip or **Renderizar todos** (Render all). Then use **Baixar** (Download) or **Abrir pasta** (Open folder) to get the MP4s.
 
+![Render all window with the templates](docs/img/renderizar-todos.webp)
+
 **8. Posting pack.** Click **Pacote para postar** (Posting pack): the AI writes a **title, caption and hashtags** for TikTok, Reels and Shorts and picks the **cover** for each clip (the sharpest frame with a face, in a clean version and one with the title). On each clip, **Postar** (Post) shows the texts (editable) with a **Copiar** (Copy) button per platform.
 
 **9. Export all (.zip).** **Exportar tudo (.zip)** downloads the MP4s + the covers + `textos.csv` (opens in Excel or Google Sheets) + `textos.txt` (for copy and paste).

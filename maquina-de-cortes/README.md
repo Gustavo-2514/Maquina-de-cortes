@@ -311,6 +311,8 @@ O app mostra o **tempo estimado** antes de começar. Clique em **Analisar**.
 
 **7. Renderize.** Clique em **Renderizar** num corte ou em **Renderizar todos**. Depois use **Baixar** ou **Abrir pasta** para pegar os MP4.
 
+![Janela Renderizar todos com os templates](docs/img/renderizar-todos.webp)
+
 **8. Pacote para postar.** Clique em **Pacote para postar**: a IA escreve **título, legenda e hashtags** para TikTok, Reels e Shorts e escolhe a **capa** de cada corte (o quadro mais nítido com rosto, numa versão limpa e outra com o título). Em cada corte, **Postar** mostra os textos (dá para editar) com um botão **Copiar** por plataforma.
 
 **9. Exportar tudo (.zip).** Baixa os MP4 + as capas + `textos.csv` (abre no Excel ou Planilhas Google) + `textos.txt` (para copiar e colar).
