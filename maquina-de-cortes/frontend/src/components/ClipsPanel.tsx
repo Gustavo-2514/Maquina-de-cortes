@@ -86,7 +86,7 @@ function RenderStatus({ c, job, onWatch }: { c: Clip; job: Job | undefined; onWa
   return (
     <div className="mt-2 flex items-center gap-3 rounded-lg border bg-muted/30 p-2">
       <button onClick={() => onWatch(c)} className="relative shrink-0 overflow-hidden rounded" aria-label="Assistir corte">
-        <img src={clipPreviewUrl(c)} alt="" className="h-16 w-9 bg-black object-cover" />
+        <img src={clipPreviewUrl(c)} alt="" width={36} height={64} loading="lazy" className="h-16 w-9 bg-black object-cover" />
         <Play className="absolute inset-0 m-auto size-4 text-white drop-shadow" />
       </button>
       <div className="min-w-0 flex-1 text-xs">
@@ -348,7 +348,7 @@ function ManualClipDialog({
         </div>
         <label className="block space-y-1.5">
           <span className="text-sm font-medium">Título (opcional)</span>
-          <Input value={title} onChange={(ev) => setTitle(ev.target.value)} maxLength={200} placeholder="Gerado a partir da primeira frase" />
+          <Input value={title} onChange={(ev) => setTitle(ev.target.value)} maxLength={200} placeholder="Gerado a partir da primeira frase…" />
         </label>
         {error ? (
           <p className="text-xs text-destructive">{error}</p>

@@ -39,8 +39,8 @@ function PresetChip({ s, active, onClick }: { s: CaptionStyle; active: boolean; 
     <button
       onClick={onClick}
       className={cn(
-        'flex h-14 w-full flex-col items-center justify-center rounded-lg border bg-neutral-800 px-2 text-center transition-colors hover:border-primary/60',
-        active && 'border-primary ring-2 ring-primary/40',
+        'flex h-14 w-full flex-col items-center justify-center rounded-lg border bg-secondary px-2 text-center transition-colors hover:border-primary/60',
+        active && 'border-primary ring-1 ring-primary',
       )}
     >
       <span
@@ -55,7 +55,7 @@ function PresetChip({ s, active, onClick }: { s: CaptionStyle; active: boolean; 
         {s.uppercase ? 'OLÁ ' : 'Olá '}
         <span style={{ color: s.animation === 'none' ? s.primary_color : s.highlight_color }}>{s.uppercase ? 'MUNDO' : 'mundo'}</span>
       </span>
-      <span className="mt-0.5 text-[10px] text-neutral-400">{s.name}</span>
+      <span className="mt-0.5 text-[10px] text-muted-foreground">{s.name}</span>
     </button>
   )
 }
@@ -108,7 +108,7 @@ export function StylePanel() {
               <button
                 className="absolute top-1 right-1 hidden rounded bg-black/60 p-0.5 text-white group-hover:block"
                 aria-label={`Apagar preset ${s.name}`}
-                onClick={() => window.confirm(`Apagar o preset "${s.name}"?`) && del.mutate(s.id)}
+                onClick={() => window.confirm(`Apagar o preset “${s.name}”?`) && del.mutate(s.id)}
               >
                 <Trash2 className="size-3" />
               </button>
@@ -200,7 +200,7 @@ export function StylePanel() {
             )
           }}
         >
-          <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome do preset" maxLength={60} />
+          <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Podcast amarelo…" maxLength={60} />
           <div className="flex justify-end">
             <Button type="submit" disabled={!name.trim() || create.isPending}>
               Salvar

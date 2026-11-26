@@ -19,6 +19,15 @@ and the project uses [semantic versioning](https://semver.org/).
 - Download quality choice (best, 1080p or 720p) right on the Home screen, before pasting the link.
   The last choice is remembered and also applies on the Downloads screen.
 
+### Changed
+
+- New minimal design system (`maquina-de-cortes/docs/DESIGN_SYSTEM.en.md`): three colors (black `#000000`,
+  white `#ffffff` and red `#df2531` for emphasis only), Poppins typeface, no shadows and grayscale illustrations.
+  Logo and favicon redrawn in the new palette.
+- Interface polish following Vercel's Web Interface Guidelines: "skip to content" link, micro-interactions on
+  buttons, cards and links, a single hero entrance, pause control on the background video, error messages that say
+  what to do, and an icon-only sidebar on narrow screens.
+
 ## [0.1.0] - 2026-11-25
 
 First public release of **Máquina de Cortes**.

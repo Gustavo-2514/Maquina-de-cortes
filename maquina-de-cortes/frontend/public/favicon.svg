@@ -1,10 +1,10 @@
 <svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg" >
   <title>Máquina de Cortes</title>
-  <g id="horizontal-frame" fill="none" stroke="#ECEAE4" stroke-width="64">
+  <g id="horizontal-frame" fill="none" stroke="#FFFFFF" stroke-width="64">
     <path d="M350 416H152C103 416 64 455 64 504V800C64 849 103 888 152 888H350" />
     <path d="M674 416H872C921 416 960 455 960 504V800C960 849 921 888 872 888H674" />
   </g>
-  <g id="lifted-clip" fill="#FFD23F">
+  <g id="lifted-clip" fill="#DF2531">
     <rect x="368" y="304" width="288" height="512" rx="48" />
     <path d="M442 280C450 178 517 116 618 108V64C618 51 632 44 643 53L735 124C746 132 746 146 735 154L643 225C632 234 618 227 618 214V176C555 183 518 220 510 280Z" />
   </g>

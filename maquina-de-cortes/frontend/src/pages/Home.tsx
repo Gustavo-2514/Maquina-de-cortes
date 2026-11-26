@@ -1,4 +1,4 @@
-import { Link2, Loader2, Scissors, Upload } from 'lucide-react'
+import { Link2, Loader2, Pause, Play, Scissors, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -34,9 +34,22 @@ const STEPS = [
 function HeroVideo() {
   // respeita “reduzir movimento”: mostra só o quadro estático
   const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const ref = useRef<HTMLVideoElement>(null)
+  const [playing, setPlaying] = useState(!reduce)
+  function toggle() {
+    const v = ref.current
+    if (!v) return
+    if (v.paused) v.play().catch(() => {})
+    else v.pause()
+  }
   return (
-    <div className="relative aspect-video overflow-hidden rounded-2xl border bg-card">
+    <div className="enter relative aspect-video overflow-hidden rounded-2xl border bg-black" style={{ '--enter-delay': '180ms' } as React.CSSProperties}>
       <video
+        ref={ref}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
+        width={1280}
+        height={720}
         src="/brand/hero.mp4"
         poster="/brand/hero.webp"
         autoPlay={!reduce}
@@ -44,8 +57,17 @@ function HeroVideo() {
         loop
         playsInline
         aria-hidden
-        className="size-full object-cover"
+        className="size-full object-cover grayscale"
       />
+      {/* loop decorativo com mais de 5 s: precisa de pausa (diretriz de acessibilidade) */}
+      <button
+        type="button"
+        onClick={toggle}
+        aria-label={playing ? 'Pausar animação' : 'Reproduzir animação'}
+        className="absolute right-3 bottom-3 grid size-9 place-items-center rounded-full border border-white/20 bg-black/70 text-white transition-[border-color,transform] hover:border-white/60 active:scale-95"
+      >
+        {playing ? <Pause className="size-3.5" /> : <Play className="size-3.5" />}
+      </button>
     </div>
   )
 }
@@ -130,7 +152,7 @@ function StartBox() {
         const f = e.dataTransfer.files[0]
         if (f) fromFile(f)
       }}
-      className={cn('rounded-xl border bg-card p-2 transition-colors', dragging && 'border-primary bg-primary/5')}
+      className={cn('rounded-xl border bg-card p-2 transition-colors focus-within:border-foreground/40', dragging && 'border-primary')}
     >
       {uploadPct !== null ? (
         <div className="space-y-2 p-3 text-sm">
@@ -142,18 +164,24 @@ function StartBox() {
         </div>
       ) : (
         <form
+          noValidate
           className="flex items-center gap-2"
           onSubmit={(e) => {
             e.preventDefault()
             fromLink()
           }}
         >
-          <Link2 className="ml-2 size-5 shrink-0 text-muted-foreground" />
+          <Link2 aria-hidden className="ml-2 size-5 shrink-0 text-muted-foreground" />
           <input
             value={link}
             onChange={(e) => setLink(e.target.value)}
-            placeholder={dragging ? 'Solte o vídeo aqui' : 'Cole o link do vídeo'}
+            placeholder={dragging ? 'Solte o vídeo aqui' : 'Cole o link do vídeo…'}
             aria-label="Link do vídeo"
+            type="url"
+            name="url"
+            inputMode="url"
+            autoComplete="off"
+            spellCheck={false}
             autoFocus
             className="h-11 min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground focus-visible:outline-none"
           />
@@ -174,20 +202,20 @@ function StartBox() {
               </option>
             ))}
           </NativeSelect>
-          <Button type="submit" size="lg" disabled={busy || !link.trim()} className="font-semibold">
+          <Button type="submit" size="lg" disabled={busy}>
             {busy ? <Loader2 className="animate-spin" /> : <Scissors />}
             Criar cortes
           </Button>
         </form>
       )}
-      <div className="flex items-center justify-between gap-3 border-t px-3 pt-2 pb-1 text-xs text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t px-3 pt-2 pb-1 text-xs text-muted-foreground">
         <span>Também dá para arrastar um arquivo de vídeo até aqui.</span>
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          className="flex items-center gap-1.5 rounded px-1 py-0.5 font-medium text-foreground hover:text-primary"
+          className="flex min-h-8 items-center gap-1.5 rounded px-1 font-medium text-foreground"
         >
-          <Upload className="size-3.5" /> Escolher arquivo
+          <Upload aria-hidden className="size-3.5" /> <span className="link-draw">Escolher arquivo</span>
         </button>
         <input
           ref={fileRef}
@@ -219,7 +247,7 @@ function InProgress() {
         {dls.map((d) => (
           <li key={`d${d.id}`} className="flex items-center gap-4 px-4 py-3">
             {d.thumbnail_url ? (
-              <img src={d.thumbnail_url} alt="" referrerPolicy="no-referrer" className="h-10 w-16 shrink-0 rounded object-cover" />
+              <img src={d.thumbnail_url} alt="" width={64} height={40} referrerPolicy="no-referrer" className="h-10 w-16 shrink-0 rounded object-cover" />
             ) : (
               <div className="h-10 w-16 shrink-0 rounded bg-muted" />
             )}
@@ -266,15 +294,17 @@ function Recent() {
     <section>
       <div className="mb-3 flex items-baseline justify-between">
         <h2 className="font-display text-lg">Continuar editando</h2>
-        <Link to="/projetos" className="text-sm text-muted-foreground hover:text-foreground">
+        <Link to="/projetos" className="link-draw text-sm text-muted-foreground hover:text-foreground">
           Ver todos os projetos
         </Link>
       </div>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {recent.map((p) => (
-          <Link key={p.id} to={`/projetos/${p.id}`} className="group">
-            <div className="relative overflow-hidden rounded-lg border transition-colors group-hover:border-primary/60">
-              <ProjectThumb p={p} />
+          <Link key={p.id} to={`/projetos/${p.id}`} className="group lift rounded-lg">
+            <div className="relative overflow-hidden rounded-lg border transition-colors group-hover:border-foreground/50">
+              <div className="zoom-in-frame">
+                <ProjectThumb p={p} />
+              </div>
               {p.duration_s != null && (
                 <span className="absolute right-1.5 bottom-1.5 rounded bg-black/75 px-1.5 text-xs text-white tabular-nums">
                   {formatDuration(p.duration_s)}
@@ -295,19 +325,19 @@ export default function HomePage() {
   const firstTime = projects?.length === 0
 
   return (
-    <div className="mx-auto max-w-6xl space-y-12 px-8 py-10">
-      <section className="grid items-center gap-10 lg:grid-cols-[1.05fr_1fr]">
+    <div className="mx-auto max-w-6xl space-y-12 px-5 py-8 md:px-8 md:py-10">
+      <section className="grid grid-cols-[minmax(0,1fr)] items-center gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
         <div>
-          <h1 className="font-display text-4xl leading-[1.05] xl:text-5xl">
+          <h1 className="enter font-display text-3xl sm:text-4xl xl:text-5xl">
             Vídeo longo entra,
             <br />
             cortes virais saem.
           </h1>
-          <p className="mt-4 max-w-md text-base text-muted-foreground">
+          <p className="enter mt-4 max-w-md text-base text-muted-foreground" style={{ '--enter-delay': '60ms' } as React.CSSProperties}>
             Cole o link de um podcast, live ou gameplay. A Máquina baixa, transcreve e separa os melhores trechos em vídeos verticais com
             legenda, sem enviar nada para a nuvem.
           </p>
-          <div className="mt-7">
+          <div className="enter mt-7" style={{ '--enter-delay': '120ms' } as React.CSSProperties}>
             <StartBox />
           </div>
         </div>
@@ -322,9 +352,9 @@ export default function HomePage() {
         <ol className="grid gap-6 md:grid-cols-3">
           {STEPS.map((s, i) => (
             <li key={s.title}>
-              <img src={s.img} alt="" className="aspect-[4/3] w-full rounded-xl border object-cover" />
+              <img src={s.img} alt="" width={880} height={663} loading="lazy" className="aspect-[4/3] h-auto w-full rounded-xl border object-cover grayscale" />
               <h3 className="mt-3 flex items-baseline gap-2 font-semibold">
-                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                <span className="grid size-6 shrink-0 place-items-center rounded-full border border-foreground/40 text-xs font-medium tabular-nums">
                   {i + 1}
                 </span>
                 {s.title}

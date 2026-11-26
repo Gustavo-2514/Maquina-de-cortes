@@ -16,10 +16,12 @@ export function ProjectThumb({ p }: { p: Project }) {
       key={src}
       src={src}
       alt=""
+      width={640}
+      height={360}
       loading="lazy"
       referrerPolicy="no-referrer"
       onError={() => setAttempt((a) => a + 1)}
-      className="aspect-video w-full bg-muted object-cover"
+      className="aspect-video h-auto w-full bg-muted object-cover"
     />
   ) : (
     <div className="grid aspect-video w-full place-items-center bg-muted text-muted-foreground">

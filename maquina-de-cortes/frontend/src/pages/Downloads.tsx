@@ -15,7 +15,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { EmptyState, PageHeader } from '@/components/Layout'
+import { EmptyState, PageHeader, LoadError } from '@/components/Layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -481,7 +481,7 @@ export default function DownloadsPage() {
           </div>
           <Card className="py-0">
             {isLoading && <p className="p-6 text-sm text-muted-foreground">Carregando…</p>}
-            {error && <p className="p-6 text-sm text-destructive">Erro ao carregar: {error.message}</p>}
+            {error && <LoadError what="os downloads" error={error} className="p-6" />}
             {data?.length === 0 && (
               <EmptyState title="Nenhum download ainda">Cole um link acima. O vídeo baixado fica aqui e pode virar um projeto de cortes.</EmptyState>
             )}

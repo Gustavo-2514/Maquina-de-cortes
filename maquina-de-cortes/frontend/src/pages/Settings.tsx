@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { DownloadSettingsCard } from '@/components/DownloadSettingsCard'
 import { PreferencesCard } from '@/components/PreferencesCard'
 import { StorageCard } from '@/components/StorageCard'
-import { PageHeader } from '@/components/Layout'
+import { PageHeader, LoadError } from '@/components/Layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -42,10 +42,10 @@ export default function SettingsPage() {
               Diagnóstico
               {data && (data.ok ? <Badge variant="success">Tudo certo</Badge> : <Badge variant="destructive">Pendências</Badge>)}
             </CardTitle>
-            <CardDescription>Itens obrigatórios em vermelho impedem partes do app de funcionar. Amarelo é opcional.</CardDescription>
+            <CardDescription>Itens marcados em vermelho são obrigatórios: sem eles, partes do app não funcionam. O ícone de alerta indica um item opcional.</CardDescription>
           </CardHeader>
           <CardContent>
-            {error && <p className="text-sm text-destructive">Não foi possível falar com a API: {error.message}</p>}
+            {error && <LoadError what="o diagnóstico" error={error} />}
             {!data && !error && <p className="text-sm text-muted-foreground">Verificando…</p>}
             <ul className="divide-y">
               {data?.items.map((item) => (

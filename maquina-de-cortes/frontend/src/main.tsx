@@ -16,7 +16,14 @@ createRoot(document.getElementById('root')!).render(
       <BrowserRouter>
         <App />
       </BrowserRouter>
-      <Toaster theme="dark" richColors position="bottom-right" />
+      <Toaster
+        theme="dark"
+        position="bottom-right"
+        toastOptions={{
+          style: { background: '#000', color: '#fff', border: '1px solid rgb(255 255 255 / 0.14)', borderRadius: 10, fontFamily: 'inherit' },
+          classNames: { error: '!border-primary', description: '!text-white/60' },
+        }}
+      />
     </QueryClientProvider>
   </StrictMode>,
 )

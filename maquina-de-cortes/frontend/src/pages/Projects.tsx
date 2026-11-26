@@ -2,7 +2,7 @@ import { Download as DownloadIcon, Film, FolderInput, Loader2, Plus, Upload } fr
 import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { EmptyState, PageHeader } from '@/components/Layout'
+import { EmptyState, PageHeader, LoadError } from '@/components/Layout'
 import { ProjectThumb } from '@/components/ProjectThumb'
 import { ProjectStatusBadge } from '@/components/ProjectProgress'
 import { Button } from '@/components/ui/button'
@@ -73,7 +73,7 @@ function NewProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
       {tab === 'download' &&
         (eligible.length === 0 ? (
           <p className="py-8 text-center text-sm text-muted-foreground">
-            Nenhum download de vídeo concluído sem projeto. <Link to="/downloads" className="text-primary underline" onClick={onClose}>Baixar um vídeo</Link>
+            Nenhum download de vídeo concluído sem projeto. <Link to="/downloads" className="underline underline-offset-4 hover:decoration-primary" onClick={onClose}>Baixar um vídeo</Link>
           </p>
         ) : (
           <ul className="max-h-80 divide-y overflow-y-auto rounded-lg border">
@@ -85,7 +85,7 @@ function NewProjectDialog({ open, onClose }: { open: boolean; onClose: () => voi
                   onClick={() => fromDownload.mutate(d.id, { onSuccess: go, onError })}
                 >
                   {d.thumbnail_url ? (
-                    <img src={d.thumbnail_url} alt="" referrerPolicy="no-referrer" className="h-10 w-16 rounded object-cover" />
+                    <img src={d.thumbnail_url} alt="" width={64} height={40} referrerPolicy="no-referrer" className="h-10 w-16 rounded object-cover" />
                   ) : (
                     <div className="h-10 w-16 rounded bg-muted" />
                   )}
@@ -177,7 +177,7 @@ export default function ProjectsPage() {
       />
       <div className="px-8 pb-8">
         {isLoading && <p className="text-sm text-muted-foreground">Carregando…</p>}
-        {error && <p className="text-sm text-destructive">Erro ao carregar: {error.message}</p>}
+        {error && <LoadError what="os projetos" error={error} />}
         {data?.length === 0 && (
           <EmptyState
             title="Nenhum projeto ainda"
@@ -192,10 +192,12 @@ export default function ProjectsPage() {
         )}
         <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-5">
           {data?.map((p) => (
-            <Link key={p.id} to={`/projetos/${p.id}`} className="group">
-              <Card className="gap-0 overflow-hidden py-0 transition-colors group-hover:border-primary/50">
-                <div className="relative">
-                  <ProjectThumb p={p} />
+            <Link key={p.id} to={`/projetos/${p.id}`} className="group lift rounded-xl">
+              <Card className="gap-0 overflow-hidden py-0 transition-colors group-hover:border-foreground/40">
+                <div className="relative overflow-hidden">
+                  <div className="zoom-in-frame">
+                    <ProjectThumb p={p} />
+                  </div>
                   {p.duration_s != null && (
                     <span className="absolute right-2 bottom-2 rounded bg-black/70 px-1.5 text-xs text-white tabular-nums">
                       {formatDuration(p.duration_s)}

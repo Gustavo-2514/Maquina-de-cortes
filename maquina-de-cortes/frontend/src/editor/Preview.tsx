@@ -152,7 +152,7 @@ export function Preview() {
   const waitingFaces = (mode === 'auto' || mode === 'split' || mode === 'speaker' || mode === 'gameplay') && track === null
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="relative overflow-hidden rounded-xl bg-black shadow-lg ring-1 ring-border" style={{ width: PREVIEW_W, height: PREVIEW_H }}>
+      <div className="relative overflow-hidden rounded-xl bg-black ring-1 ring-border" style={{ width: PREVIEW_W, height: PREVIEW_H }}>
         <PreviewCanvas />
         <CaptionOverlay />
       </div>

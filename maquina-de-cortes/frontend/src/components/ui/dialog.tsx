@@ -27,12 +27,12 @@ export function Dialog({
 
   if (!open) return null
   return createPortal(
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4 backdrop-blur-sm animate-in fade-in-0" onMouseDown={onClose}>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/80 p-4 animate-in fade-in-0" onMouseDown={onClose}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className={cn('relative max-h-[90dvh] w-full max-w-lg overflow-y-auto rounded-xl border bg-card p-6 shadow-lg animate-in zoom-in-95', className)}
+        className={cn('relative max-h-[90dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl border bg-background p-6 animate-in zoom-in-95', className)}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <button onClick={onClose} className="absolute top-4 right-4 rounded-sm text-muted-foreground hover:text-foreground" aria-label="Fechar">

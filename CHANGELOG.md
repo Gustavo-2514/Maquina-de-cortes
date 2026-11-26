@@ -17,6 +17,15 @@ e o projeto usa [versionamento semântico](https://semver.org/lang/pt-BR/).
 - Escolha da qualidade do download (melhor, 1080p ou 720p) direto no Início, antes de colar o link.
   A última escolha fica salva e vale também na tela de Downloads.
 
+### Alterado
+
+- Novo design system minimalista (`maquina-de-cortes/docs/DESIGN_SYSTEM.md`): três cores (preto `#000000`,
+  branco `#ffffff` e vermelho `#df2531` só para destaques), fonte Poppins, sem sombras e ilustrações em escala de cinza.
+  Logo e favicon redesenhados na nova paleta.
+- Acabamento de interface seguindo as Web Interface Guidelines da Vercel: link "Pular para o conteúdo", microinterações
+  em botões, cards e links, entrada única do hero, pausa no vídeo de fundo, mensagens de erro que dizem o que fazer
+  e barra lateral só com ícones em telas estreitas.
+
 ## [0.1.0] - 2026-11-25
 
 Primeira versão pública da **Máquina de Cortes**.

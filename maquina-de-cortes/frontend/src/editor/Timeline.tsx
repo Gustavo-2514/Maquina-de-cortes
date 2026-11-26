@@ -75,8 +75,8 @@ export function Timeline() {
     ctx.clearRect(0, 0, width, WAVE_H)
     if (!wave) return
     const css = getComputedStyle(document.documentElement)
-    const inside = css.getPropertyValue('--primary').trim() || '#8b5cf6'
-    const outside = css.getPropertyValue('--muted-foreground').trim() || '#888'
+    const inside = css.getPropertyValue('--primary').trim() || '#df2531'
+    const outside = css.getPropertyValue('--muted-foreground').trim() || 'rgba(255,255,255,.6)'
     const mid = WAVE_H / 2
     for (let x = 0; x < width; x++) {
       const t0 = vs + x / pps

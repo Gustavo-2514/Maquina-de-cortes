@@ -117,7 +117,7 @@ export function SourceView() {
           onPointerUp={onPointerUp}
           className={
             draggable(r)
-              ? `absolute border-2 shadow-[0_0_0_1px_rgba(0,0,0,.5)] ${r.role === 'cam' ? 'cursor-move border-sky-400' : r.role === 'game' ? 'cursor-ew-resize border-amber-400' : 'cursor-grab border-primary active:cursor-grabbing'}`
+              ? `absolute border-2 shadow-[0_0_0_1px_rgba(0,0,0,.5)] ${r.role === 'cam' ? 'cursor-move border-white' : r.role === 'game' ? 'cursor-ew-resize border-dashed border-white' : 'cursor-grab border-primary active:cursor-grabbing'}`
               : 'pointer-events-none absolute border-2 border-white/80 shadow-[0_0_0_1px_rgba(0,0,0,.5)]'
           }
           style={{ left: `${r.left * 100}%`, top: `${r.top * 100}%`, width: `${r.w * 100}%`, height: `${r.h * 100}%` }}
@@ -127,7 +127,7 @@ export function SourceView() {
       ))}
       {mode === 'gameplay' && rects.some((r) => r.role === 'cam') && (
         <span className="pointer-events-none absolute bottom-2 left-2 rounded bg-black/70 px-2 py-0.5 text-[11px] text-white">
-          Arraste a webcam (azul) e o jogo (amarelo)
+          Arraste a webcam (linha contínua) e o jogo (linha tracejada)
         </span>
       )}
       {mode === 'manual' && (

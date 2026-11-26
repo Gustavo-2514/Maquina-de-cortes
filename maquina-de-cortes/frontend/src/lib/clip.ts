@@ -1,7 +1,7 @@
 export function scoreVariant(score: number) {
-  if (score >= 80) return 'bg-success/15 text-success border-success/30'
-  if (score >= 60) return 'bg-warning/15 text-warning border-warning/30'
-  return 'bg-muted text-muted-foreground'
+  if (score >= 80) return 'bg-primary text-primary-foreground border-primary'
+  if (score >= 60) return 'text-foreground border-foreground/40'
+  return 'text-muted-foreground border-border'
 }
 
 /** mm:ss.d — precisão de décimo de segundo para os tempos do corte. */

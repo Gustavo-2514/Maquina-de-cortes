@@ -41,7 +41,7 @@ export function ProjectSteps({ p }: { p: Project }) {
             <span
               className={cn(
                 'grid size-6 shrink-0 place-items-center rounded-full border text-xs',
-                done && 'border-success bg-success/15 text-success',
+                done && 'border-foreground bg-foreground text-background',
                 active && 'border-primary text-primary',
                 failed && 'border-destructive text-destructive',
               )}

@@ -2,7 +2,7 @@ import { Ban, Cpu, Loader2, RotateCcw } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
-import { PageHeader } from '@/components/Layout'
+import { PageHeader, LoadError } from '@/components/Layout'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -56,7 +56,7 @@ export default function QueuePage() {
 
         <Card className="overflow-hidden py-0">
           {isLoading && <p className="p-6 text-sm text-muted-foreground">Carregando…</p>}
-          {error && <p className="p-6 text-sm text-destructive">Erro ao carregar: {error.message}</p>}
+          {error && <LoadError what="a fila" error={error} className="p-6" />}
           {jobs && visible.length === 0 && (
             <p className="p-10 text-center text-sm text-muted-foreground">
               {filter === 'all' ? 'Nada na fila. Downloads, transcrições e renders aparecem aqui enquanto rodam.' : 'Nenhum trabalho com esse filtro.'}

@@ -358,7 +358,7 @@ export default function ProjectPage() {
           className="text-muted-foreground"
           aria-label="Apagar projeto"
           onClick={() => {
-            if (!window.confirm(`Apagar o projeto "${p.name}"? Os arquivos gerados (proxy, transcrição) são removidos; o vídeo original fica.`)) return
+            if (!window.confirm(`Apagar o projeto “${p.name}”? Os arquivos gerados (proxy, transcrição) são removidos; o vídeo original fica.`)) return
             remove.mutate(p.id, {
               onSuccess: () => (toast.success('Projeto apagado'), navigate('/projetos')),
               onError: (e) => toast.error(e.message),

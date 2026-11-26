@@ -306,7 +306,7 @@ export default function EditorPage() {
           <input
             value={draft.title}
             onChange={(e) => setDraft({ title: e.target.value }, 'title')}
-            placeholder="Título do corte"
+            placeholder="Título do corte…"
             maxLength={200}
             className="min-w-0 flex-1 rounded-md border border-transparent bg-transparent px-2 py-1 text-lg font-semibold outline-none hover:border-input focus:border-ring"
           />
