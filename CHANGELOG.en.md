@@ -11,6 +11,8 @@ and the project uses [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-26
+
 ### Added
 
 - Contribution guide (`CONTRIBUTING.md`), Conventional Commits standard enforced by a hook
@@ -68,5 +70,6 @@ First public release of **Máquina de Cortes**.
 - Full README with a beginner-friendly walkthrough, screenshots and an explanation of the models.
 - MIT license.
 
-[Unreleased]: https://github.com/Gustavo-2514/ai-studio/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Gustavo-2514/ai-studio/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Gustavo-2514/ai-studio/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/Gustavo-2514/ai-studio/releases/tag/v0.1.0

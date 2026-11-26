@@ -9,6 +9,8 @@ e o projeto usa [versionamento semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+## [1.0.0] - 2026-11-26
+
 ### Adicionado
 
 - Guia de contribuição (`CONTRIBUTING.md`), padrão de commits Conventional Commits com validação por hook
@@ -66,5 +68,6 @@ Primeira versão pública da **Máquina de Cortes**.
 - README completo com passo a passo para iniciantes, prints das telas e explicação dos modelos.
 - Licença MIT.
 
-[Não lançado]: https://github.com/Gustavo-2514/ai-studio/compare/v0.1.0...HEAD
+[Não lançado]: https://github.com/Gustavo-2514/ai-studio/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Gustavo-2514/ai-studio/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/Gustavo-2514/ai-studio/releases/tag/v0.1.0
