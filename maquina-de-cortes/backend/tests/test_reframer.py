@@ -85,10 +85,31 @@ def test_track_split_when_two_stable_faces():
     assert set(tr.layout) == {1}
     ax, ay, bx, by = tr.split[100]  # type: ignore[misc]
     assert ax == pytest.approx(0.25, abs=0.01) and bx == pytest.approx(0.72, abs=0.01)  # esquerda em cima
-    # só 1 rosto na maior parte → não divide (cai para o crop normal)
-    mostly_one = faces_for(10, lambda t: [face(0.3)] + ([face(0.7)] if t < 3 else []))
-    tr = reframer.compute_track(mostly_one, [], 0, 10, SRC_W, SRC_H, 30, "split")
+    # só 1 rosto no quadro → nunca divide
+    one = faces_for(10, lambda t: [face(0.3)])
+    tr = reframer.compute_track(one, [], 0, 10, SRC_W, SRC_H, 30, "split")
     assert set(tr.layout) == {0}
+
+
+def test_split_per_moment_single_person_fills_screen():
+    # 2 pessoas até 3 s, depois só a da direita: divide, depois ela em tela cheia e centralizada
+    faces = faces_for(10, lambda t: ([face(0.25)] if t < 3 else []) + [face(0.7)])
+    tr = reframer.compute_track(faces, [], 0, 10, SRC_W, SRC_H, 30, "split")
+    assert set(tr.layout[:80]) == {1} and set(tr.layout[100:]) == {0}
+    assert tr.cx[200] == pytest.approx(0.7, abs=0.02)
+    # uma falha de detecção de 0,4 s no meio do debate não desfaz a divisão
+    blip = faces_for(10, lambda t: [face(0.25), face(0.72)] if not 4 <= t < 4.4 else [face(0.72)])
+    tr = reframer.compute_track(blip, [], 0, 10, SRC_W, SRC_H, 30, "split")
+    assert set(tr.layout) == {1}
+
+
+def test_split_never_shows_same_person_twice():
+    # uma pessoa só, andando pela cena (vira 2 clusters próximos) e com detecção duplicada
+    drift = faces_for(10, lambda t: [face(0.4 + 0.02 * t)] + ([face(0.41 + 0.02 * t, size=0.14)] if t > 5 else []))
+    tr = reframer.compute_track(drift, [], 0, 10, SRC_W, SRC_H, 30, "split")
+    assert set(tr.layout) == {0}
+    for sp in tr.split:
+        assert sp is None
 
 
 def test_track_manual_keyframes():

@@ -31,7 +31,8 @@ FACE_MIN_SIZE = 0.035  # rostos menores que 3,5% da altura (plateia, fundo) são
 DEADZONE = 0.08  # fração da largura do crop
 ALPHA = 0.2  # suavização exponencial por amostra (5 fps → constante de tempo ~1 s)
 CLUSTER_DX = 0.08  # mesma pessoa se o centro X variar menos que isso (normalizado)
-SPLIT_MIN_RATIO = 0.6  # cena vira "split" se ≥ 60% das amostras tiverem os 2 rostos
+SPLIT_MIN_DX = 0.15  # 2 rostos a menos de 15% da largura um do outro = provavelmente a mesma pessoa
+SPLIT_MIN_RUN_S = 1.0  # trechos (com 2 ou com 1 pessoa) menores que 1 s são absorvidos pelo vizinho: sem pisca-pisca
 FACES_VERSION = 5  # v2: atividade da boca; v3/v4: desconta movimento em volta e perfil; v5: abertura dos lábios
 LANDMARKER_MODEL = MODELS_DIR / "face_landmarker.task"
 MAR_MIN_FACE_H = 0.08  # rostos menores que isso: lábios ilegíveis, nem tenta
@@ -528,6 +529,93 @@ def speaker_runs(samples: list[list[list[float]]], sample_t: np.ndarray, cluster
     return runs
 
 
+# --- tela dividida (debate) ------------------------------------------------------------
+def _two_people(a: Cluster, b: Cluster, faces: list[list[float]]) -> tuple[list[float], list[float]] | None:
+    """Rostos de a e b na amostra, só se forem duas pessoas de verdade: detecções diferentes, sem sobreposição
+    e afastadas na horizontal (evita a mesma pessoa em cima e embaixo)."""
+    fa, fb = _face_in(a, faces), _face_in(b, faces)
+    if fa is None or fb is None or fa is fb:
+        return None
+    dx = abs(fa[0] - fb[0])
+    if dx < SPLIT_MIN_DX or dx < (fa[2] + fb[2]) * 0.75:
+        return None
+    return fa, fb
+
+
+def _split_pair(samples: list[list[list[float]]], clusters: list[Cluster]) -> tuple[Cluster, Cluster] | None:
+    """As duas pessoas que mais aparecem juntas na cena (esquerda primeiro)."""
+    top = clusters[0].weight if clusters else 0.0
+    people = [c for c in clusters if c.weight >= 0.1 * top and c.count >= 0.1 * len(samples)][:4]
+    best, best_n = None, 0
+    for x in range(len(people)):
+        for y in range(x + 1, len(people)):
+            n = sum(1 for s in samples if _two_people(people[x], people[y], s))
+            if n > best_n:
+                best, best_n = (people[x], people[y]), n
+    return tuple(sorted(best, key=lambda c: c.cx)) if best else None  # type: ignore[return-value]
+
+
+def _runs(mask: np.ndarray) -> list[tuple[bool, int, int]]:
+    out, s = [], 0
+    for i in range(1, len(mask) + 1):
+        if i == len(mask) or mask[i] != mask[s]:
+            out.append((bool(mask[s]), s, i))
+            s = i
+    return out
+
+
+def _debounce(mask: np.ndarray, min_len: int) -> np.ndarray:
+    """Absorve trechos curtos (detecção que falhou por um instante) no vizinho, do menor para o maior."""
+    m = mask.copy()
+    while True:
+        runs = _runs(m)
+        short = [r for r in runs if r[2] - r[1] < min_len]
+        if len(runs) <= 1 or not short:
+            return m
+        v, a, b = min(short, key=lambda r: r[2] - r[1])
+        m[a:b] = not v
+
+
+def _split_scene(samples, sample_t, clusters, ft, idxs, i0, ffps, cwn, layout_arr, cx, split) -> bool:
+    """Modo split, por momento: 2 pessoas distintas → tela dividida; 1 pessoa → ela em tela cheia, centralizada.
+    Devolve False se a cena nunca tem duas pessoas (o chamador segue com o crop normal)."""
+    pair = _split_pair(samples, clusters)
+    if pair is None:
+        return False
+    a_c, b_c = pair
+    found = [_two_people(a_c, b_c, s) for s in samples]
+    two = _debounce(np.array([f is not None for f in found]), max(1, int(round(SPLIT_MIN_RUN_S * ffps))))
+    if not two.any():
+        return False
+    s_of_f = np.clip(np.round(ft * ffps).astype(int) - i0, 0, len(samples) - 1)  # amostra de cada frame
+    for val, a, b in _runs(two):
+        sel = (s_of_f >= a) & (s_of_f < b)
+        if not sel.any():
+            continue
+        st, sm = sample_t[a:b], samples[a:b]
+        if val:
+            fnd = found[a:b]
+            tracks = []
+            for k, c in enumerate((a_c, b_c)):
+                fx = [f[k][0] if f else None for f in fnd]
+                fy = [f[k][1] if f else None for f in fnd]
+                tracks.append(_interp(st, smooth(fx, DEADZONE * 0.5, default=c.cx), ft[sel]))
+                tracks.append(_interp(st, smooth(fy, 0.05, default=c.cy), ft[sel]))
+            layout_arr[idxs[sel]] = 1
+            for k, idx in enumerate(idxs[sel]):
+                split[idx] = [float(tracks[0][k]), float(tracks[1][k]), float(tracks[2][k]), float(tracks[3][k])]
+        else:
+            local = cluster_faces(sm)  # quem aparece neste trecho: ocupa a tela toda, centralizado
+            if not local:
+                cx[idxs[sel]] = 0.5
+                continue
+            c = local[0]
+            targets = [(_face_in(c, s) or [None])[0] for s in sm]
+            cx[idxs[sel]] = _interp(st, smooth(targets, DEADZONE * cwn, default=c.cx), ft[sel])
+    return True
+
+
+
 def compute_track(faces: dict, cuts: list[float], start: float, end: float, src_w: int, src_h: int,
                   fps: float, mode: str = "auto", keyframes: list[dict] | None = None,
                   speech: list[tuple[float, float]] | None = None, layout: dict | None = None,
@@ -590,20 +678,9 @@ def compute_track(faces: dict, cuts: list[float], start: float, end: float, src_
         clusters = cluster_faces(samples)
         ft = frame_t[fmask]
 
-        if mode == "split" and len(clusters) >= 2:
-            a_c, b_c = sorted(clusters[:2], key=lambda c: c.cx)  # esquerda em cima
-            both = sum(1 for s in samples if _face_in(a_c, s) and _face_in(b_c, s))
-            if both / max(1, len(samples)) >= SPLIT_MIN_RATIO:
-                tracks = []
-                for c in (a_c, b_c):
-                    fx = [(_face_in(c, s) or [None])[0] for s in samples]
-                    fy = [(_face_in(c, s) or [None, None])[1] for s in samples]
-                    tracks.append(_interp(sample_t, smooth(fx, DEADZONE * 0.5, default=c.cx), ft))
-                    tracks.append(_interp(sample_t, smooth(fy, 0.05, default=c.cy), ft))
-                layout_arr[fmask] = 1
-                for k, idx in enumerate(np.flatnonzero(fmask)):
-                    split[idx] = [float(tracks[0][k]), float(tracks[1][k]), float(tracks[2][k]), float(tracks[3][k])]
-                continue
+        if mode == "split" and _split_scene(samples, sample_t, clusters, ft, np.flatnonzero(fmask), i0, ffps,
+                                            cwn, layout_arr, cx, split):
+            continue
 
         if not clusters:
             cx[fmask] = 0.5  # cena sem rosto: centro

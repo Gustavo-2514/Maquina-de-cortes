@@ -218,7 +218,7 @@ const MODES: { v: 'auto' | 'speaker' | 'gameplay' | 'center' | 'blur_fit' | 'spl
   { v: 'gameplay', label: 'Webcam + jogo', hint: 'Gameplay: webcam do streamer em cima, jogo centralizado embaixo.' },
   { v: 'center', label: 'Centro', hint: 'Crop fixo no meio do quadro.' },
   { v: 'blur_fit', label: 'Inteiro + fundo borrado', hint: 'Vídeo inteiro no meio; bom para tela, gameplay e slides.' },
-  { v: 'split', label: 'Tela dividida', hint: 'Duas pessoas: esquerda em cima, direita embaixo (quando as duas aparecem).' },
+  { v: 'split', label: 'Tela dividida', hint: 'Duas pessoas: esquerda em cima, direita embaixo. Com uma só no quadro, ela ocupa a tela toda.' },
   { v: 'manual', label: 'Manual', hint: 'Você define a posição com keyframes.' },
 ]
 
@@ -384,7 +384,7 @@ export function TextPanel() {
   return (
     <div className="space-y-4">
       <Row label="Título fixo no topo do vídeo">
-        <Input value={titleOverlay} onChange={(e) => setDraft({ title_overlay: e.target.value }, 'title_overlay')} placeholder="Ex.: Não escute seus pais" maxLength={120} />
+        <Input value={titleOverlay} onChange={(e) => setDraft({ title_overlay: e.target.value }, 'title_overlay')}  maxLength={120} />
       </Row>
       <div className="flex gap-2">
         <Button size="sm" variant="outline" disabled={!title} onClick={() => setDraft({ title_overlay: title })}>
