@@ -11,6 +11,23 @@ and the project uses [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Try again** after an AI analysis error now resumes from the window that failed: answers for windows already
+  read are kept in the project and reused (same model and options). The cache is deleted when the analysis
+  finishes, so **Reanalyze** still asks for fresh suggestions.
+- Ollama now has a 2048-token cap per answer; before, a model stuck in a loop produced hundreds of KB of text
+  and the analysis failed with "The LLM did not return valid JSON".
+- Videos with very dense speech (debates, crowded podcasts) always failed on the same window: the request went
+  past the 8192-token context, Ollama silently cut its beginning (the instructions) and the model returned
+  garbage. The request size is now estimated before sending and, only when it does not fit, the context is raised
+  up to the installed model's maximum (read from Ollama); if it still does not fit, the window is split in two.
+- **Split screen (Debate)** now decides moment by moment: with two people in frame it splits (left on top, right
+  at the bottom); when only one shows up, they fill the whole screen, centered. Before, the decision applied to the
+  whole scene and the same person could appear on top and at the bottom (one face matched both sides); now it only
+  splits with two different faces, not overlapping and apart horizontally. Stretches shorter than 1 s are absorbed
+  by their neighbor, so a brief detection miss does not make the screen flicker.
+
 ## [1.0.0] - 2026-11-26
 
 ### Added

@@ -9,6 +9,23 @@ e o projeto usa [versionamento semântico](https://semver.org/lang/pt-BR/).
 
 ## [Não lançado]
 
+### Corrigido
+
+- **Tentar de novo** após erro na análise da IA agora retoma do trecho que falhou: as respostas dos trechos já
+  lidos ficam guardadas no projeto e são reaproveitadas (mesmo modelo e mesmas opções). Ao concluir a análise o
+  cache é apagado, então **Reanalisar** continua pedindo sugestões novas.
+- O Ollama passa a ter um teto de 2048 tokens por resposta; antes, um modelo que entrava em loop gerava centenas
+  de KB de texto e a análise falhava com "O LLM não devolveu um JSON válido".
+- Vídeos com fala muito densa (debates, podcasts com muita gente) falhavam sempre no mesmo trecho: o pedido
+  passava do contexto de 8192 tokens, o Ollama cortava o começo (as instruções) em silêncio e o modelo devolvia
+  lixo. Agora o tamanho do pedido é estimado antes de enviar e, só quando não cabe, o contexto é aumentado até o
+  máximo do modelo instalado (lido do Ollama); se nem assim couber, o trecho é dividido em dois.
+- **Tela dividida (Debate)** decide momento a momento: com duas pessoas no quadro divide (esquerda em cima,
+  direita embaixo); quando só uma aparece, ela ocupa a tela inteira, centralizada. Antes a decisão valia para a
+  cena toda e a mesma pessoa podia aparecer em cima e embaixo (o mesmo rosto casava com os dois lados); agora só
+  divide com dois rostos diferentes, sem sobreposição e afastados na horizontal. Trechos com menos de 1 s são
+  absorvidos pelo vizinho, então uma falha rápida de detecção não faz a tela piscar.
+
 ## [1.0.0] - 2026-11-26
 
 ### Adicionado
