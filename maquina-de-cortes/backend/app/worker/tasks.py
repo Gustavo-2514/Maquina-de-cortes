@@ -370,6 +370,9 @@ def speech_intervals(words: list[dict], gap: float = 0.4) -> list[tuple[float, f
     return out
 
 
+ANALYZE_CACHE = "analyze-cache"  # respostas da IA por trecho (retomada após erro)
+
+
 def handle_analyze(ctx: JobContext) -> None:
     p = _load_project(ctx.ref_id)
     pdir = get_settings().project_dir(ctx.ref_id)
@@ -402,6 +405,7 @@ def handle_analyze(ctx: JobContext) -> None:
             ctx.report(pct, f"IA lendo o trecho {state['win'] + 1} de {state['n']}…")
 
         meter = None
+        llm_tag = opts.llm if opts.llm != "ollama" else f"ollama:{us.ollama_model}"
         if opts.llm != "ollama":  # IA paga (Claude, OpenRouter, OpenAI…): custo real medido em cada chamada
             from ..services import ai
 
@@ -417,6 +421,7 @@ def handle_analyze(ctx: JobContext) -> None:
             clips = highlighter.find_highlights(
                 transcript, p.duration_s or 0, opts.num_clips, opts.min_s, opts.max_s, opts.extra_prompt,
                 llm, pdir / "audio.wav", on_window, ctx.is_canceled, template=template,
+                cache_dir=pdir / ANALYZE_CACHE, cache_tag=llm_tag,
             )
         except highlighter.Canceled:
             raise JobCanceled() from None
@@ -438,6 +443,8 @@ def handle_analyze(ctx: JobContext) -> None:
             s.commit()
             renders = enqueue_pending_renders(s, ctx.ref_id) if opts.auto_render else []
 
+    # cache de trechos só serve para retomar uma análise que falhou; concluída, "Reanalisar" pede respostas novas
+    shutil.rmtree(pdir / ANALYZE_CACHE, ignore_errors=True)
     if renders:  # etapa extra do pipeline: o projeto só fica "pronto" quando o último render terminar
         _update_project(ctx.ref_id, status="processing", stage="render", progress=0)
     else:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import bisect
+import hashlib
 import json
 import logging
 import math
@@ -27,6 +28,15 @@ SENTENCE_END = (".", "?", "!", "…", '."', '?"', '!"')
 WEIGHTS = {"gancho": 0.35, "completude": 0.25, "emocao": 0.25, "clareza": 0.15}
 MIN_RATIO = 0.75  # aceita cortes até 75% do mínimo (ex.: 45 s com mínimo de 60) quando não dá para esticar
 SHORT_PENALTY = 12.0  # pontos tirados (proporcionalmente) de cortes abaixo do mínimo → a maioria fica na faixa
+# teto de tokens de saída no Ollama: sem ele, um modelo que entra em loop gera centenas de KB de JSON sem fim.
+# A resposta de um trecho (alguns cortes) cabe folgada; o Ollama reserva esse espaço DENTRO do num_ctx.
+OLLAMA_MAX_TOKENS = 2048
+# contexto padrão; só aumenta quando o pedido não cabe (mais contexto = mais VRAM e mais lento)
+OLLAMA_BASE_CTX = 8192
+OLLAMA_CTX_STEP = 2048
+# transcrição com timestamps tokeniza mal (cada dígito vira token): medido ≈ 1,8 caracteres/token no
+# qwen2.5 em português → 1,6 dá margem para não subestimar
+CHARS_PER_TOKEN = 1.6
 
 SYSTEM_PROMPT = """Você é um editor especialista em vídeos curtos virais (TikTok, Reels, Shorts).
 Receberá a transcrição de um trecho de vídeo com timestamps.
@@ -242,14 +252,61 @@ def build_messages(lines: str, t0: float, t1: float, k: int, min_s: float, max_s
 LLMCall = Callable[[list[dict], float], str]
 
 
+class PromptTooLong(HighlightError):
+    """O pedido não cabe no contexto máximo do modelo: quem chama deve dividir o trecho."""
+
+
+def estimate_tokens(messages: list[dict]) -> int:
+    """Estimativa conservadora (para cima) dos tokens de entrada, incluindo o template de chat."""
+    return math.ceil(sum(len(m["content"]) for m in messages) / CHARS_PER_TOKEN) + 16 * len(messages)
+
+
+_CTX_LIMITS: dict[tuple[str, str], int] = {}
+
+
+def ollama_context_limit(base: str, model: str) -> int:
+    """Contexto máximo do modelo instalado (`/api/show` → model_info.<arch>.context_length).
+    Só é consultado quando o pedido passa do contexto padrão; falha de consulta não fica em cache."""
+    key = (base, model)
+    if key in _CTX_LIMITS:
+        return _CTX_LIMITS[key]
+    try:
+        r = httpx.post(f"{base}/api/show", json={"model": model}, timeout=10)
+        r.raise_for_status()
+        info = r.json().get("model_info") or {}
+    except (httpx.HTTPError, ValueError) as e:
+        log.warning("não consegui ler o contexto máximo de %s (%s); usando %d", model, e, OLLAMA_BASE_CTX)
+        return OLLAMA_BASE_CTX
+    limits = [int(v) for k, v in info.items() if k.endswith(".context_length") and isinstance(v, (int, float))]
+    _CTX_LIMITS[key] = limits[0] if limits else OLLAMA_BASE_CTX
+    return _CTX_LIMITS[key]
+
+
+def pick_num_ctx(prompt_tokens: int, model_limit: Callable[[], int], model: str = "") -> int:
+    """Contexto padrão se couber; senão o menor múltiplo de OLLAMA_CTX_STEP que caiba, até o máximo do modelo."""
+    need = prompt_tokens + OLLAMA_MAX_TOKENS
+    if need <= OLLAMA_BASE_CTX:
+        return OLLAMA_BASE_CTX
+    limit = model_limit()
+    if need > limit:
+        raise PromptTooLong(f"O trecho é grande demais para o modelo {model}.",
+                            f"~{prompt_tokens} tokens de entrada + {OLLAMA_MAX_TOKENS} de saída > contexto máximo {limit}")
+    return min(limit, math.ceil(need / OLLAMA_CTX_STEP) * OLLAMA_CTX_STEP)
+
+
 def ollama_chat(url: str, model: str, is_canceled: Callable[[], bool],
                 on_chunk: Callable[[int], None] | None = None, schema: dict | None = None) -> LLMCall:
     """Retorna uma função (messages, temperature) → texto, com streaming para permitir cancelar."""
     base = url.rstrip("/")
 
     def call(messages: list[dict], temperature: float) -> str:
+        prompt_tokens = estimate_tokens(messages)
+        num_ctx = pick_num_ctx(prompt_tokens, lambda: ollama_context_limit(base, model), model)
+        if num_ctx > OLLAMA_BASE_CTX:
+            log.info("pedido com ~%d tokens: usando contexto de %d no %s", prompt_tokens, num_ctx, model)
         body = {"model": model, "messages": messages, "stream": True, "format": schema or SCHEMA,
-                "options": {"temperature": temperature, "num_ctx": 8192}, "keep_alive": "5m"}
+                "options": {"temperature": temperature, "num_ctx": num_ctx, "num_predict": OLLAMA_MAX_TOKENS},
+                "keep_alive": "5m"}
         parts: list[str] = []
         try:
             with httpx.stream("POST", f"{base}/api/chat", json=body,
@@ -271,6 +328,12 @@ def ollama_chat(url: str, model: str, is_canceled: Callable[[], bool],
                     if on_chunk:
                         on_chunk(len(parts))
                     if msg.get("done"):
+                        # rede de segurança: se a estimativa errou e o Ollama cortou a entrada, as instruções
+                        # se perderam e a resposta não presta → trata como "não cabe" (o trecho é dividido)
+                        used = msg.get("prompt_eval_count") or 0
+                        if used >= num_ctx - OLLAMA_MAX_TOKENS - 4:
+                            raise PromptTooLong(f"O Ollama cortou o pedido ({used} tokens) no modelo {model}.",
+                                                f"contexto {num_ctx}, estimativa {prompt_tokens}")
                         break
         except httpx.ConnectError as e:
             raise HighlightError(f"O Ollama não está respondendo em {url}. Verifique em Configurações.", str(e)) from e
@@ -451,6 +514,13 @@ def postprocess(cands: list[dict], words: Words, duration: float, min_s: float, 
     return out
 
 
+def window_cache_path(cache_dir: Path | None, tag: str, messages: list[dict]) -> Path | None:
+    if cache_dir is None:
+        return None
+    key = hashlib.sha256(json.dumps([tag, messages], ensure_ascii=False).encode()).hexdigest()[:24]
+    return cache_dir / f"{key}.json"
+
+
 def find_highlights(
     transcript: dict,
     duration: float,
@@ -463,7 +533,11 @@ def find_highlights(
     on_window: Callable[[int, int], None] | None = None,
     is_canceled: Callable[[], bool] = lambda: False,
     template: Template | None = None,
+    cache_dir: Path | None = None,
+    cache_tag: str = "",
 ) -> list[dict]:
+    """`cache_dir`: guarda a resposta de cada trecho; se a análise falhar no meio, a próxima tentativa
+    reaproveita os trechos já lidos (chave = modelo `cache_tag` + prompt exato do trecho)."""
     template = template or get_template(None)
     words = Words.from_transcript(transcript)
     if len(words) < 5:
@@ -479,16 +553,42 @@ def find_highlights(
     # gameplay: a IA tende a escolher lances sobrepostos (mesma reação) → pede mais candidatos
     factor = 2.5 if template.heuristic == "reactions" else 1.5
     per_window = math.ceil(num_clips * factor / len(windows)) + 1
-    cands: list[dict] = []
-    for i, (t0, t1) in enumerate(windows):
+
+    def read_window(t0: float, t1: float) -> list[dict]:
         if is_canceled():
             raise Canceled()
-        if on_window:
-            on_window(i, len(windows))
         lines = transcript_lines(transcript, t0, t1, rms if template.loudness_hints else None, rms_mean)
         if not lines.strip():
-            continue
-        cands.extend(ask_llm(llm, build_messages(lines, t0, t1, per_window, min_s, max_s, prompt)))
+            return []
+        messages = build_messages(lines, t0, t1, per_window, min_s, max_s, prompt)
+        cached = window_cache_path(cache_dir, cache_tag, messages)
+        if cached is not None and cached.exists():
+            try:
+                found = json.loads(cached.read_text(encoding="utf-8"))
+                log.info("trecho %.0f–%.0fs reaproveitado do cache", t0, t1)
+                return found
+            except (OSError, ValueError):
+                pass
+        try:
+            found = ask_llm(llm, messages)
+        except PromptTooLong:
+            # fala muito densa: o trecho não cabe no modelo → divide em dois (com sobreposição) e tenta de novo
+            size = t1 - t0
+            if size < 2 * max_s:
+                raise
+            mid, half_ov = (t0 + t1) / 2, min(OVERLAP_S, size / 4) / 2
+            log.info("trecho %.0f–%.0fs grande demais para o modelo; dividindo em dois", t0, t1)
+            return read_window(t0, mid + half_ov) + read_window(mid - half_ov, t1)
+        if cached is not None:
+            cached.parent.mkdir(parents=True, exist_ok=True)
+            cached.write_text(json.dumps(found, ensure_ascii=False), encoding="utf-8")
+        return found
+
+    cands: list[dict] = []
+    for i, (t0, t1) in enumerate(windows):
+        if on_window:
+            on_window(i, len(windows))
+        cands.extend(read_window(t0, t1))
 
     processed = postprocess(cands, words, duration, min_s, max_s, rms, template.heuristic, template.llm_weight)
     clips = remove_overlaps(processed)

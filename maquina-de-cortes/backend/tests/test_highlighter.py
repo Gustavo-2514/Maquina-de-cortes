@@ -154,6 +154,107 @@ def test_find_highlights_end_to_end():
                 assert hl.overlap_ratio(a, b) <= 0.5
 
 
+def test_find_highlights_resumes_from_failed_window(tmp_path):
+    t = make_transcript(n_sentences=300)
+    duration = t["segments"][-1]["end"] + 1
+    n = len(hl.make_windows(duration))
+    assert n > 2
+    calls: list[float] = []
+    fail_at = {"t0": hl.make_windows(duration)[2][0]}
+
+    def llm(messages, temperature):
+        t0 = float(messages[1]["content"].split("Trecho de ")[1].split("s")[0])
+        calls.append(t0)
+        if t0 == fail_at["t0"]:
+            return '{"clips": [{"start": 1, "title": "sem fim'  # JSON cortado, como no loop do modelo
+        return json.dumps({"clips": [cand(t0 + 10, t0 + 45)]})
+
+    cache = tmp_path / "cache"
+    with pytest.raises(hl.HighlightError):
+        hl.find_highlights(t, duration, 5, 20, 60, "", llm=llm, cache_dir=cache, cache_tag="m")
+    assert len(list(cache.glob("*.json"))) == 2  # trechos 1 e 2 ficaram guardados
+
+    calls.clear()
+    fail_at["t0"] = -1
+    clips = hl.find_highlights(t, duration, 5, 20, 60, "", llm=llm, cache_dir=cache, cache_tag="m")
+    assert clips
+    assert len(calls) == n - 2  # retomou do trecho que falhou
+
+    calls.clear()  # outro modelo → não reaproveita
+    hl.find_highlights(t, duration, 5, 20, 60, "", llm=llm, cache_dir=cache, cache_tag="outro")
+    assert len(calls) == n
+
+
+def test_pick_num_ctx_only_grows_when_needed():
+    asked = []
+
+    def limit():
+        asked.append(1)
+        return 32768
+
+    assert hl.pick_num_ctx(3000, limit) == hl.OLLAMA_BASE_CTX
+    assert not asked  # cabe no padrão → nem consulta o modelo
+    ctx = hl.pick_num_ctx(10_300, limit)  # o trecho que falhava (~9-10 mil tokens)
+    assert asked and ctx >= 10_300 + hl.OLLAMA_MAX_TOKENS and ctx % hl.OLLAMA_CTX_STEP == 0 and ctx <= 32768
+    with pytest.raises(hl.PromptTooLong):
+        hl.pick_num_ctx(31_000, limit)
+
+
+def test_estimate_tokens_is_conservative():
+    # medido no Ollama: 16 653 caracteres de transcrição com timestamps = 9 122 tokens
+    msgs = [{"role": "system", "content": "x" * 3000}, {"role": "user", "content": "y" * 13_653}]
+    assert hl.estimate_tokens(msgs) >= 9122
+
+
+def test_ollama_context_limit_reads_model_info(monkeypatch):
+    class R:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"model_info": {"general.architecture": "qwen2", "qwen2.context_length": 32768}}
+
+    hl._CTX_LIMITS.clear()
+    monkeypatch.setattr(hl.httpx, "post", lambda *a, **k: R())
+    assert hl.ollama_context_limit("http://x", "qwen2.5:7b") == 32768
+    hl._CTX_LIMITS.clear()
+
+
+def test_find_highlights_splits_window_that_does_not_fit(tmp_path):
+    t = make_transcript(n_sentences=300)
+    duration = t["segments"][-1]["end"] + 1
+    windows = hl.make_windows(duration)
+    big = windows[1]
+    spans: list[tuple[float, float]] = []
+
+    def llm(messages, temperature):
+        head = messages[1]["content"].split("Trecho de ")[1]
+        t0 = float(head.split("s")[0])
+        t1 = float(head.split(" a ")[1].split("s")[0])
+        spans.append((t0, t1))
+        if t1 - t0 > (big[1] - big[0]) * 0.9 and round(t0) == round(big[0]):
+            raise hl.PromptTooLong("grande demais")
+        return json.dumps({"clips": [cand(t0 + 10, t0 + 45)]})
+
+    clips = hl.find_highlights(t, duration, 5, 20, 60, "", llm=llm, cache_dir=tmp_path / "c", cache_tag="m")
+    assert clips
+    halves = [s for s in spans if big[0] - 1 <= s[0] and s[1] <= big[1] + 1 and s[1] - s[0] < big[1] - big[0]]
+    assert len(halves) == 2  # o trecho grande virou dois menores
+    assert halves[0][0] <= big[0] + 1 and halves[1][1] >= big[1] - 1  # cobrem o trecho inteiro
+    assert halves[0][1] > halves[1][0]  # com sobreposição
+
+
+def test_find_highlights_gives_up_when_window_cannot_shrink():
+    t = make_transcript(n_sentences=60)
+    duration = t["segments"][-1]["end"] + 1
+
+    def llm(messages, temperature):
+        raise hl.PromptTooLong("grande demais")
+
+    with pytest.raises(hl.PromptTooLong):
+        hl.find_highlights(t, duration, 3, 20, 60, "", llm=llm)
+
+
 def test_find_highlights_too_little_speech():
     t = make_transcript(n_sentences=2)
     with pytest.raises(hl.HighlightError):
